@@ -1210,43 +1210,6 @@ body.anim-off .nav-sliding-pill {
   text-overflow: ellipsis;
 }
 
-.astrostar-music-output-badge {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.07);
-  color: #c0c2ce;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.astrostar-music-output-badge:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-}
-
-.astrostar-music-output-badge svg {
-  width: 12px;
-  height: 12px;
-}
-
-.astrostar-music-output-badge.playing {
-  background: rgba(30, 215, 96, 0.2);
-  border-color: rgba(30, 215, 96, 0.5);
-  color: #1ed760;
-  box-shadow: 0 0 8px rgba(30, 215, 96, 0.35);
-}
-
 .astrostar-music-progress-section {
   display: flex;
   flex-direction: column;

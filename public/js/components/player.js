@@ -143,11 +143,6 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         <div class="astrostar-music-title" title="${title}">${title}</div>
         <div class="astrostar-music-artist" title="${artist}">${artist}</div>
       </div>
-      <button class="astrostar-music-output-badge" title="Media Output: Astro Star Player" aria-label="Media Output">
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-        </svg>
-      </button>
     </div>
 
     <!-- Scrubber Progress Bar -->
@@ -216,7 +211,6 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   const nextBtn = container.querySelector(".btn-next");
   const shuffleBtn = container.querySelector(".btn-shuffle");
   const loopBtn = container.querySelector(".btn-loop");
-  const outputBadge = container.querySelector(".astrostar-music-output-badge");
 
   const sliderWrap = container.querySelector(".astrostar-music-slider-wrap");
   const fillEl = container.querySelector(".astrostar-music-fill");
@@ -242,11 +236,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     if (isPlaying) {
       iconPlay.style.display = "none";
       iconPause.style.display = "block";
-      outputBadge.classList.add("playing");
     } else {
       iconPlay.style.display = "block";
       iconPause.style.display = "none";
-      outputBadge.classList.remove("playing");
     }
 
     if (durationSec > 0) {
@@ -524,11 +516,6 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     loopBtn.classList.toggle("active", loopMode);
     if (htmlAudio) htmlAudio.loop = loopMode;
     showToast(loopMode ? "Loop: On" : "Loop: Off");
-  });
-
-  outputBadge.addEventListener("click", (e) => {
-    e.stopPropagation();
-    showToast(`Playing on ${canUseNativeService ? "Android System Service" : "Device Audio Engine"}`);
   });
 
   // Smooth Scrubber Dragging & Seeking
