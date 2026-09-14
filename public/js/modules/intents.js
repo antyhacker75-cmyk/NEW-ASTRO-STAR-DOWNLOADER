@@ -30,6 +30,9 @@ import {
 import { renderHistory } from "../ui.js";
 import { onHistoryItemClick, onHistoryDeleteClick } from "./history.js";
 
+let lastHandledClipboardUrl = "";
+let lastAnalyzedUrl = "";
+
 export async function handlePasteFromClipboard(isSilent = false) {
   try {
     let text = "";
@@ -65,19 +68,42 @@ export async function handlePasteFromClipboard(isSilent = false) {
           }
           triggerHaptic("light");
           return;
-        } else {
-          urlInput.value = trimmed;
-          urlInput.dispatchEvent(new Event("input"));
-          urlInput.dispatchEvent(new Event("change"));
-          clearBtn.classList.remove("hidden");
-          pasteBtn.classList.add("hidden");
-          triggerHaptic("light");
         }
+
+        const currentInput = urlInput ? urlInput.value.trim() : "";
+
+        // If this is a silent auto-paste (e.g. app resume / recent apps switch):
+        if (isSilent) {
+          // Do NOT re-paste and do NOT re-analyze if:
+          // 1. The input already contains this exact URL
+          // 2. We already auto-handled this exact clipboard URL
+          // 3. This exact URL has already been analyzed/downloaded
+          if (
+            trimmed === currentInput ||
+            trimmed === lastHandledClipboardUrl ||
+            trimmed === lastAnalyzedUrl
+          ) {
+            return;
+          }
+          // Also skip if an active analysis/download is currently running
+          if (downloadBtn && downloadBtn.classList.contains("is-cancelling")) {
+            return;
+          }
+        }
+
+        lastHandledClipboardUrl = trimmed;
+        urlInput.value = trimmed;
+        urlInput.dispatchEvent(new Event("input"));
+        urlInput.dispatchEvent(new Event("change"));
+        clearBtn.classList.remove("hidden");
+        pasteBtn.classList.add("hidden");
+        triggerHaptic("light");
 
         const autoAnalyze =
           localStorage.getItem("astrostar_auto_analyze") === "true" ||
           localStorage.getItem("mori_auto_analyze") === "true";
         if (autoAnalyze) {
+          lastAnalyzedUrl = trimmed;
           setTimeout(() => {
             if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
               downloadBtn.click();
@@ -91,6 +117,7 @@ export async function handlePasteFromClipboard(isSilent = false) {
             // Wi-Fi check for auto-download
             const canAuto = await checkWifiOnlyGuard();
             if (canAuto) {
+              lastAnalyzedUrl = trimmed;
               setTimeout(() => {
                 if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
                   downloadBtn.click();
@@ -113,6 +140,15 @@ export async function handlePasteFromClipboard(isSilent = false) {
 
 pasteBtn?.addEventListener("click", () => handlePasteFromClipboard());
 
+// Track manual analyze button clicks to prevent resume auto-trigger
+downloadBtn?.addEventListener("click", () => {
+  const current = urlInput?.value?.trim();
+  if (current) {
+    lastAnalyzedUrl = current;
+    lastHandledClipboardUrl = current;
+  }
+});
+
 // Support native keyboard (Ctrl+V) / browser paste auto-analyze
 urlInput?.addEventListener("paste", () => {
   const autoAnalyze =
@@ -122,8 +158,12 @@ urlInput?.addEventListener("paste", () => {
     setTimeout(() => {
       const val = urlInput.value.trim();
       if (val && (val.startsWith("http") || val.includes(".com") || val.includes(".net") || val.includes("youtu.be"))) {
-        if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
-          downloadBtn.click();
+        if (val !== lastAnalyzedUrl) {
+          lastAnalyzedUrl = val;
+          lastHandledClipboardUrl = val;
+          if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
+            downloadBtn.click();
+          }
         }
       }
     }, 200);

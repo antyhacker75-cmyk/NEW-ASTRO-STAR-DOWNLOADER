@@ -27,6 +27,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
+import androidx.media.session.MediaButtonReceiver;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -98,8 +99,12 @@ public class MediaPlaybackService extends Service {
         if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
             act.runOnUiThread(() -> {
                 try {
-                    String fn = isNext ? "window.astroStarMediaNextTrack" : "window.astroStarMediaPrevTrack";
-                    act.getBridge().getWebView().evaluateJavascript("if (typeof " + fn + " === 'function') " + fn + "();", null);
+                    String fn1 = isNext ? "window.astroStarMediaNextTrack" : "window.astroStarMediaPrevTrack";
+                    String fn2 = isNext ? "window.moriMediaNextTrack" : "window.moriMediaPrevTrack";
+                    act.getBridge().getWebView().evaluateJavascript(
+                        "(function(){ if (typeof " + fn1 + " === 'function') { " + fn1 + "(); } else if (typeof " + fn2 + " === 'function') { " + fn2 + "(); } })();",
+                        null
+                    );
                 } catch (Exception ignored) {}
             });
         }
@@ -111,7 +116,7 @@ public class MediaPlaybackService extends Service {
             act.runOnUiThread(() -> {
                 try {
                     act.getBridge().getWebView().evaluateJavascript(
-                        "if (typeof window.astroStarMediaProgress === 'function') window.astroStarMediaProgress(" + posMs + ", " + durMs + ");",
+                        "(function(){ if (typeof window.astroStarMediaProgress === 'function') window.astroStarMediaProgress(" + posMs + ", " + durMs + "); if (typeof window.moriMediaProgress === 'function') window.moriMediaProgress(" + posMs + ", " + durMs + "); })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -125,7 +130,7 @@ public class MediaPlaybackService extends Service {
             act.runOnUiThread(() -> {
                 try {
                     act.getBridge().getWebView().evaluateJavascript(
-                        "if (typeof window.astroStarMediaState === 'function') window.astroStarMediaState({ isPlaying: " + playing + ", duration: " + durMs + " });",
+                        "(function(){ if (typeof window.astroStarMediaState === 'function') window.astroStarMediaState({ isPlaying: " + playing + ", duration: " + durMs + " }); if (typeof window.moriMediaState === 'function') window.moriMediaState({ isPlaying: " + playing + ", duration: " + durMs + " }); })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -165,6 +170,13 @@ public class MediaPlaybackService extends Service {
             if (intent == null) return START_NOT_STICKY;
             String action = intent.getAction();
             if (action == null) return START_NOT_STICKY;
+
+            if (Intent.ACTION_MEDIA_BUTTON.equals(action)) {
+                if (mediaSession != null) {
+                    MediaButtonReceiver.handleIntent(mediaSession, intent);
+                }
+                return START_NOT_STICKY;
+            }
 
             switch (action) {
                 case ACTION_LOAD: {
@@ -233,6 +245,10 @@ public class MediaPlaybackService extends Service {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
                 MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
 
+        Intent mbrIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null, this, MediaButtonReceiver.class);
+        PendingIntent mbrPendingIntent = PendingIntent.getBroadcast(this, 0, mbrIntent, pendingFlags());
+        mediaSession.setMediaButtonReceiver(mbrPendingIntent);
+
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
             @Override public void onPlay()             { play(); }
             @Override public void onPause()            { pause(); }
@@ -240,6 +256,26 @@ public class MediaPlaybackService extends Service {
             @Override public void onSkipToNext()       { notifyWebViewTrackChange(true); }
             @Override public void onSkipToPrevious()   { notifyWebViewTrackChange(false); }
             @Override public void onSeekTo(long pos)   { seekTo((int) pos); }
+
+            @Override
+            public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                if (mediaButtonEvent != null && Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonEvent.getAction())) {
+                    android.view.KeyEvent ke = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                    if (ke != null && ke.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                        int code = ke.getKeyCode();
+                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) { play(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) { pause(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
+                            if (isPlaying) pause(); else play();
+                            return true;
+                        }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) { notifyWebViewTrackChange(true); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) { notifyWebViewTrackChange(false); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) { stopPlayback(); stopSelf(); return true; }
+                    }
+                }
+                return super.onMediaButtonEvent(mediaButtonEvent);
+            }
         });
 
         // Initial state so the system knows the app can play media
