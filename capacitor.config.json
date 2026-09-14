@@ -1,0 +1,13 @@
+{
+  "appId": "com.astrostar.downloader",
+  "appName": "Astro Star",
+  "webDir": "public",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    }
+  }
+}

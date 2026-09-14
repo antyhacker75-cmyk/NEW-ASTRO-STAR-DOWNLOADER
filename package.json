@@ -1,0 +1,50 @@
+{
+  "name": "astro-star",
+  "version": "4.3.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "node -e \"console.log('Build completed')\"",
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "build:android": "npx cap sync android && cd android && ./gradlew assembleDebug",
+    "build:android:release": "npx cap sync android && cd android && ./gradlew assembleRelease",
+    "build:ios:ipa": "npx cap sync ios && xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/AstroStar.xcarchive archive CODE_SIGNING_ALLOWED=NO",
+    "build:macos": "npm run tauri:build && rm -rf /tmp/dmg_build && mkdir -p /tmp/dmg_build && cp -r src-tauri/target/release/bundle/macos/AstroStar.app /tmp/dmg_build/ && cp src-tauri/README.txt /tmp/dmg_build/ && hdiutil create -volname AstroStar -srcfolder /tmp/dmg_build -ov -format UDZO AstroStar.dmg"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor-community/media": "^8.0.1",
+    "@capacitor/android": "^7.6.8",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/cli": "^7.6.8",
+    "@capacitor/clipboard": "^7.0.4",
+    "@capacitor/core": "^7.6.8",
+    "@capacitor/filesystem": "^7.1.8",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/ios": "^7.6.8",
+    "@capacitor/network": "^7.0.4",
+    "@capacitor/share": "^7.0.4",
+    "@capgo/capacitor-native-biometric": "^7.6.0",
+    "@mediagrid/capacitor-native-audio": "^2.0.0",
+    "axios": "^1.16.0",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "form-data": "^4.0.6"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  },
+  "overrides": {
+    "tar": "7.5.21",
+    "brace-expansion": "5.0.9",
+    "undici": "7.29.0"
+  }
+}

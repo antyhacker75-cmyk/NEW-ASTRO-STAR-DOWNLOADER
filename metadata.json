@@ -1,0 +1,8 @@
+{
+  "name": "Astro Star Downloader",
+  "description": "Minimalist media downloader for videos, photos, and music across social platforms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
