@@ -487,9 +487,6 @@ public class MediaPlaybackService extends Service {
             } else if (playUrl.startsWith("file://")) {
                 Uri parsedUri = Uri.parse(playUrl);
                 String filePath = parsedUri.getPath();
-                if (filePath != null) {
-                    try { filePath = Uri.decode(filePath); } catch (Exception ignored) {}
-                }
                 File f = new File(filePath != null ? filePath : playUrl.substring(7));
                 if (f.exists() && f.canRead()) {
                     mediaPlayer.setDataSource(f.getAbsolutePath());
@@ -503,10 +500,6 @@ public class MediaPlaybackService extends Service {
                 } else {
                     mediaPlayer.setDataSource(playUrl);
                 }
-            } else if (playUrl.startsWith("http://") || playUrl.startsWith("https://")) {
-                java.util.Map<String, String> headers = new java.util.HashMap<>();
-                headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-                mediaPlayer.setDataSource(this, Uri.parse(playUrl), headers);
             } else {
                 mediaPlayer.setDataSource(playUrl);
             }
