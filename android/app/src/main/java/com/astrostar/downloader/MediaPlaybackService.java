@@ -233,7 +233,11 @@ public class MediaPlaybackService extends Service {
                         int ms = intent.getIntExtra(EXTRA_SEEK, -1);
                         if (ms >= 0) { seekTo(ms); break; }
                     }
-                    play();
+                    if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
+                        loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+                    } else {
+                        play();
+                    }
                     break;
                 }
                 case ACTION_PAUSE:  pause();       break;
@@ -312,7 +316,11 @@ public class MediaPlaybackService extends Service {
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
             @Override
             public void onPlay() {
-                play();
+                if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
+                    loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+                } else {
+                    play();
+                }
                 notifyWebViewPlayPause(true);
             }
 
@@ -618,7 +626,15 @@ public class MediaPlaybackService extends Service {
             } else if (playUrl.startsWith("http://") || playUrl.startsWith("https://")) {
                 java.util.Map<String, String> headers = new java.util.HashMap<>();
                 headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-                headers.put("Referer", "https://www.google.com/");
+                if (playUrl.contains("soundloaders")) {
+                    headers.put("Referer", "https://soundloaders.app/");
+                    headers.put("Origin", "https://soundloaders.app");
+                } else if (playUrl.contains("spotidown")) {
+                    headers.put("Referer", "https://spotidown.app/");
+                    headers.put("Origin", "https://spotidown.app");
+                } else {
+                    headers.put("Referer", "https://www.google.com/");
+                }
                 mediaPlayer.setDataSource(this, Uri.parse(playUrl), headers);
             } else {
                 mediaPlayer.setDataSource(playUrl);
@@ -664,7 +680,12 @@ public class MediaPlaybackService extends Service {
     }
 
     private void play() {
-        if (mediaPlayer == null) return;
+        if (mediaPlayer == null) {
+            if (currentUrl != null && !currentUrl.isEmpty()) {
+                loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+            }
+            return;
+        }
         if (!isPrepared) {
             // Called before prepare finished — just remember intent.
             return;

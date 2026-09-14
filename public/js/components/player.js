@@ -31,6 +31,20 @@ export function formatTime(sec) {
   return `${h}:${padMin}:${padSec}`;
 }
 
+// Global active player coordinator to prevent any duplicate audio playback
+export function stopAllActiveMedia() {
+  document.querySelectorAll("audio, video").forEach((el) => {
+    try {
+      el.pause();
+      el.currentTime = 0;
+    } catch (_) {}
+  });
+  const nativeBridge = window.AstroStarMainBridge || window.MoriMainBridge || null;
+  if (nativeBridge?.stopMedia) {
+    try { nativeBridge.stopMedia(); } catch (_) {}
+  }
+}
+
 // Detect source platform for the badge
 function getPlatformInfo(item = {}, url = "") {
   const combined = `${url} ${item.url || ""} ${item.platform || ""} ${item.extractor || ""} ${item.title || ""}`.toLowerCase();
@@ -250,6 +264,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     }
   };
 
+  // Stop any other active media across the entire app
+  stopAllActiveMedia();
+
   // Next / Previous slide actions
   const triggerNext = () => {
     const modalNextBtn = document.getElementById("modalSlideNextBtn");
@@ -279,23 +296,6 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       handleSeek(0);
     }
   };
-
-  // Hook global bridge callbacks for Android native service
-  window.astroStarMediaNextTrack = triggerNext;
-  window.astroStarMediaPrevTrack = triggerPrev;
-  window.moriMediaNextTrack = triggerNext;
-  window.moriMediaPrevTrack = triggerPrev;
-
-  window.astroStarMediaRemotePlayPause = (play) => {
-    if (play) handlePlay();
-    else handlePause();
-  };
-  window.moriMediaRemotePlayPause = window.astroStarMediaRemotePlayPause;
-
-  window.astroStarMediaRemoteSeek = (posMs) => {
-    handleSeek(posMs / 1000);
-  };
-  window.moriMediaRemoteSeek = window.astroStarMediaRemoteSeek;
 
   // Setup audio URL for both webview/browser and native playback
   let audioUrl = dl.url || dl.rawPath || dl.rawUri || "";
@@ -348,26 +348,66 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
           Referer: BASE + "/",
           Origin: BASE,
         };
+        const payload = "data=" + encodeURIComponent(dataVal) + "&track_token=" + encodeURIComponent(tokenVal);
         let dlHtml = "";
-        if (window.CapacitorHttp) {
+
+        if (window.AstroStarShareBridge?.httpRequest) {
+          try {
+            const resRaw = window.AstroStarShareBridge.httpRequest(
+              JSON.stringify({
+                url: BASE + "/action/tracks",
+                method: "POST",
+                headers: formHeaders,
+                data: payload,
+              })
+            );
+            const res = JSON.parse(resRaw);
+            let dd = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+            dlHtml = dd?.html || "";
+          } catch (_) {}
+        }
+        if (!dlHtml && window.CapacitorHttp) {
           const res = await window.CapacitorHttp.post({
             url: BASE + "/action/tracks",
             headers: formHeaders,
-            data: "data=" + encodeURIComponent(dataVal) + "&track_token=" + encodeURIComponent(tokenVal),
+            data: payload,
           });
           let dd = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
           dlHtml = dd?.html || "";
-        } else {
+        }
+        if (!dlHtml) {
           const res = await fetch(BASE + "/action/tracks", {
             method: "POST",
             headers: formHeaders,
-            body: "data=" + encodeURIComponent(dataVal) + "&track_token=" + encodeURIComponent(tokenVal),
+            body: payload,
           });
           const dd = await res.json();
           dlHtml = dd?.html || "";
         }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(dlHtml, "text/html");
+        let foundLink = "";
+        doc.querySelectorAll("a").forEach((a) => {
+          const href = a.getAttribute("href");
+          const text = a.textContent.trim();
+          if (
+            href &&
+            href.startsWith("http") &&
+            !href.includes("tunecable.com") &&
+            !href.includes("premium") &&
+            text !== "Download Another Song"
+          ) {
+            if (!foundLink) foundLink = href;
+          }
+        });
+        if (foundLink) return foundLink;
+
         const match = dlHtml.match(/href=["'](https:\/\/dl\.soundloaders\.app\/cdnv1\?token=[^"']+)["']/);
         if (match && match[1]) return match[1];
+
+        const matchDirect = dlHtml.match(/https:\/\/[^\s"']+\.soundloaders\.app\/[^\s"']+/i);
+        if (matchDirect && matchDirect[0]) return matchDirect[0];
       } catch (e) {
         console.warn("Failed to resolve soundloaders track:", e);
       }
@@ -385,7 +425,23 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         };
         if (cookiesStr) reqHeaders["Cookie"] = cookiesStr;
         let dlHtml = "";
-        if (window.CapacitorHttp) {
+
+        if (window.AstroStarShareBridge?.httpRequest) {
+          try {
+            const resRaw = window.AstroStarShareBridge.httpRequest(
+              JSON.stringify({
+                url: "https://spotidown.app/action/track",
+                method: "POST",
+                headers: reqHeaders,
+                data: payloadStr,
+              })
+            );
+            const res = JSON.parse(resRaw);
+            let dd = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
+            dlHtml = (typeof dd === "object" ? dd?.data : dd) || "";
+          } catch (_) {}
+        }
+        if (!dlHtml && window.CapacitorHttp) {
           const res = await window.CapacitorHttp.post({
             url: "https://spotidown.app/action/track",
             headers: reqHeaders,
@@ -393,7 +449,8 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
           });
           let dd = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
           dlHtml = (typeof dd === "object" ? dd?.data : dd) || "";
-        } else {
+        }
+        if (!dlHtml) {
           const res = await fetch("https://spotidown.app/action/track", {
             method: "POST",
             headers: reqHeaders,
@@ -421,7 +478,7 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     return url;
   };
 
-  // Setup HTML5 Audio element embedded in the container
+  // Setup HTML5 Audio element embedded in the container (only used for non-native web playback)
   const htmlAudio = document.createElement("audio");
   htmlAudio.className = "astrostar-music-audio-engine";
   htmlAudio.style.display = "none";
@@ -431,7 +488,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   htmlAudio.setAttribute("webkit-playsinline", "true");
   htmlAudio.setAttribute("referrerpolicy", "no-referrer");
   htmlAudio.loop = loopMode;
-  if (!audioUrl.includes("_resolve:")) {
+
+  // Only assign audio src for web if native service is not used
+  if (!canUseNativeService && !audioUrl.includes("_resolve:")) {
     htmlAudio.src = audioUrl;
   }
   container.appendChild(htmlAudio);
@@ -442,30 +501,31 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       if (resUrl && !resUrl.includes("_resolve:")) {
         audioUrl = resUrl;
         rawNativeUrl = resUrl;
-        htmlAudio.src = resUrl;
         if (canUseNativeService && nativeBridge) {
           try {
             nativeBridge.loadMedia(resUrl, title, artist, artwork);
           } catch (_) {}
+        } else {
+          htmlAudio.src = resUrl;
+          if (isPlaying) {
+            htmlAudio.play().catch(() => {});
+          }
         }
       }
     });
   }
 
   htmlAudio.addEventListener("loadedmetadata", () => {
-    durationSec = htmlAudio.duration || 0;
-    updateUIState(isPlaying, durationSec, htmlAudio.currentTime);
-    syncMediaSession();
-    updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
-    if (nativeBridge && typeof nativeBridge.syncPlaybackState === "function") {
-      try {
-        nativeBridge.syncPlaybackState(isPlaying, Math.round(htmlAudio.currentTime * 1000), Math.round(durationSec * 1000));
-      } catch (_) {}
+    if (!canUseNativeService) {
+      durationSec = htmlAudio.duration || 0;
+      updateUIState(isPlaying, durationSec, htmlAudio.currentTime);
+      syncMediaSession();
+      updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
     }
   });
 
   htmlAudio.addEventListener("timeupdate", () => {
-    if (!isDragging) {
+    if (!canUseNativeService && !isDragging) {
       currentSec = htmlAudio.currentTime;
       updateUIState(isPlaying, htmlAudio.duration || durationSec, currentSec);
       updateMediaSessionPositionState(durationSec, currentSec);
@@ -473,26 +533,20 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   });
 
   htmlAudio.addEventListener("play", () => {
-    updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.playbackState = "playing";
-    }
-    if (nativeBridge && typeof nativeBridge.syncPlaybackState === "function") {
-      try {
-        nativeBridge.syncPlaybackState(true, Math.round(htmlAudio.currentTime * 1000), Math.round((htmlAudio.duration || durationSec) * 1000));
-      } catch (_) {}
+    if (!canUseNativeService) {
+      updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "playing";
+      }
     }
   });
 
   htmlAudio.addEventListener("pause", () => {
-    updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.playbackState = "paused";
-    }
-    if (nativeBridge && typeof nativeBridge.syncPlaybackState === "function") {
-      try {
-        nativeBridge.syncPlaybackState(false, Math.round(htmlAudio.currentTime * 1000), Math.round((htmlAudio.duration || durationSec) * 1000));
-      } catch (_) {}
+    if (!canUseNativeService) {
+      updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "paused";
+      }
     }
   });
 
@@ -503,13 +557,15 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   });
 
   htmlAudio.addEventListener("error", (e) => {
-    console.warn("Audio error, attempting proxy streaming...", e);
-    if (audioUrl && audioUrl.startsWith("http") && !htmlAudio._proxyTried) {
-      htmlAudio._proxyTried = true;
-      htmlAudio.src = `/api/proxy?url=${encodeURIComponent(audioUrl)}`;
-      htmlAudio.load();
-      if (isPlaying) {
-        htmlAudio.play().catch(() => {});
+    if (!canUseNativeService) {
+      console.warn("Audio error, attempting proxy streaming...", e);
+      if (audioUrl && audioUrl.startsWith("http") && !htmlAudio._proxyTried) {
+        htmlAudio._proxyTried = true;
+        htmlAudio.src = `/api/proxy?url=${encodeURIComponent(audioUrl)}`;
+        htmlAudio.load();
+        if (isPlaying) {
+          htmlAudio.play().catch(() => {});
+        }
       }
     }
   });
@@ -518,6 +574,7 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   const handlePlay = () => {
     if (canUseNativeService && nativeBridge) {
       try {
+        htmlAudio.pause();
         nativeBridge.playMedia();
         updateUIState(true, durationSec, currentSec);
         syncMediaSession();
@@ -526,17 +583,14 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         }
       } catch (err) {
         canUseNativeService = false;
+        if (!htmlAudio.src && audioUrl) htmlAudio.src = audioUrl;
         htmlAudio.play().catch((e) => console.warn("HTML5 audio play error:", e));
       }
     } else {
+      if (!htmlAudio.src && audioUrl) htmlAudio.src = audioUrl;
       htmlAudio.play().then(() => {
         updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
         syncMediaSession();
-        if (nativeBridge && typeof nativeBridge.syncPlaybackState === "function") {
-          try {
-            nativeBridge.syncPlaybackState(true, Math.round(htmlAudio.currentTime * 1000), Math.round((htmlAudio.duration || durationSec) * 1000));
-          } catch (_) {}
-        }
       }).catch((err) => {
         console.warn("HTML5 audio play error:", err);
       });
@@ -555,13 +609,10 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         console.warn("Native pauseMedia failed:", err);
       }
     }
-    htmlAudio.pause();
-    updateUIState(false, durationSec, htmlAudio.currentTime);
-    if (nativeBridge && typeof nativeBridge.syncPlaybackState === "function") {
-      try {
-        nativeBridge.syncPlaybackState(false, Math.round(htmlAudio.currentTime * 1000), Math.round(durationSec * 1000));
-      } catch (_) {}
-    }
+    try {
+      htmlAudio.pause();
+    } catch (_) {}
+    updateUIState(false, durationSec, canUseNativeService ? currentSec : htmlAudio.currentTime);
   };
 
   const handleSeek = (sec) => {
@@ -574,8 +625,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
           nativeBridge.syncPlaybackState(isPlaying, Math.round(targetSec * 1000), Math.round(durationSec * 1000));
         }
       } catch (_) {}
+    } else {
+      htmlAudio.currentTime = targetSec;
     }
-    htmlAudio.currentTime = targetSec;
     updateUIState(isPlaying, durationSec, targetSec);
     updateMediaSessionPositionState(durationSec, targetSec);
   };
@@ -606,6 +658,7 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       if (state.isError) {
         console.warn("Native media playback error, falling back to HTML5 audio...");
         canUseNativeService = false;
+        if (!htmlAudio.src && audioUrl) htmlAudio.src = audioUrl;
         if (isPlaying) {
           htmlAudio.play().catch((e) => console.warn("HTML5 audio fallback error:", e));
         }
@@ -624,6 +677,18 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     window.moriMediaNextTrack = triggerNext;
     window.astroStarMediaPrevTrack = triggerPrev;
     window.moriMediaPrevTrack = triggerPrev;
+
+    window.astroStarMediaRemotePlayPause = (play) => {
+      isPlaying = !!play;
+      updateUIState(isPlaying, durationSec, currentSec);
+    };
+    window.moriMediaRemotePlayPause = window.astroStarMediaRemotePlayPause;
+
+    window.astroStarMediaRemoteSeek = (posMs) => {
+      currentSec = posMs / 1000;
+      updateUIState(isPlaying, durationSec, currentSec);
+    };
+    window.moriMediaRemoteSeek = window.astroStarMediaRemoteSeek;
   } else {
     // Web / Chrome / PWA mode
     syncMediaSession();
@@ -730,20 +795,23 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
   // Cleanup on element destruction
   container._cleanup = () => {
-    if (canUseNativeService) {
+    if (canUseNativeService && nativeBridge) {
       try {
-        window.AstroStarMainBridge.stopMedia();
+        nativeBridge.stopMedia();
       } catch (_) {}
       window.astroStarMediaProgress = null;
       window.astroStarMediaState = null;
+      window.astroStarMediaRemotePlayPause = null;
+      window.astroStarMediaRemoteSeek = null;
+      window.moriMediaProgress = null;
+      window.moriMediaState = null;
+      window.moriMediaRemotePlayPause = null;
+      window.moriMediaRemoteSeek = null;
     }
-    if (htmlAudio) {
-      try {
-        htmlAudio.pause();
-        htmlAudio.src = "";
-        htmlAudio = null;
-      } catch (_) {}
-    }
+    try {
+      htmlAudio.pause();
+      htmlAudio.src = "";
+    } catch (_) {}
     clearMediaSession();
   };
 
@@ -754,6 +822,7 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
  * 🎬 Full Video Player with Web Media Session API integration
  */
 export function createVideoPlayer(dl, index, resultThumbnail) {
+  stopAllActiveMedia();
   let videoUrl = dl.url || "";
   const isLocal =
     videoUrl.includes("_capacitor_file_") ||
