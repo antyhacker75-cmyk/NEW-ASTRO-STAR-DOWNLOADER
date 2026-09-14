@@ -66,36 +66,24 @@ export async function handlePasteFromClipboard(isSilent = false) {
           triggerHaptic("light");
           return;
         } else {
+          if (urlInput.value.trim() === trimmed) return;
           urlInput.value = trimmed;
           urlInput.dispatchEvent(new Event("input"));
-          urlInput.dispatchEvent(new Event("change"));
-          clearBtn.classList.remove("hidden");
-          pasteBtn.classList.add("hidden");
           triggerHaptic("light");
         }
 
         const autoAnalyze =
-          localStorage.getItem("astrostar_auto_analyze") === "true" ||
           localStorage.getItem("mori_auto_analyze") === "true";
         if (autoAnalyze) {
-          setTimeout(() => {
-            if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
-              downloadBtn.click();
-            }
-          }, 250);
+          setTimeout(() => downloadBtn?.click(), 300);
         } else if (isSilent) {
           const autoDownload =
-            localStorage.getItem("astrostar_auto_download") === "true" ||
             localStorage.getItem("mori_auto_download") === "true";
           if (autoDownload) {
             // Wi-Fi check for auto-download
             const canAuto = await checkWifiOnlyGuard();
             if (canAuto) {
-              setTimeout(() => {
-                if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
-                  downloadBtn.click();
-                }
-              }, 400);
+              setTimeout(() => downloadBtn.click(), 500);
             }
           }
         }
@@ -112,23 +100,6 @@ export async function handlePasteFromClipboard(isSilent = false) {
 }
 
 pasteBtn?.addEventListener("click", () => handlePasteFromClipboard());
-
-// Support native keyboard (Ctrl+V) / browser paste auto-analyze
-urlInput?.addEventListener("paste", () => {
-  const autoAnalyze =
-    localStorage.getItem("astrostar_auto_analyze") === "true" ||
-    localStorage.getItem("mori_auto_analyze") === "true";
-  if (autoAnalyze) {
-    setTimeout(() => {
-      const val = urlInput.value.trim();
-      if (val && (val.startsWith("http") || val.includes(".com") || val.includes(".net") || val.includes("youtu.be"))) {
-        if (downloadBtn && !downloadBtn.classList.contains("is-cancelling")) {
-          downloadBtn.click();
-        }
-      }
-    }, 200);
-  }
-});
 
 urlInput.addEventListener("input", () => {
   if (!isBatchMode) {
@@ -251,12 +222,8 @@ if (App && typeof App.addListener === "function") {
         updateGreeting();
       } catch (_) {}
 
-      const loopSetting =
-        localStorage.getItem("astrostar_loop") !== "false" &&
-        localStorage.getItem("mori_loop") !== "false";
-      const autoPaste =
-        localStorage.getItem("astrostar_auto_paste") !== "false" &&
-        localStorage.getItem("mori_auto_paste") !== "false";
+      const loopSetting = localStorage.getItem("mori_loop") !== "false";
+      const autoPaste = localStorage.getItem("mori_auto_paste") !== "false";
       if (autoPaste) {
         setIntentPending(true); // Assume a share might be coming
 

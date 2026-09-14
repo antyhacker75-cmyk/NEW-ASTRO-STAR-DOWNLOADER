@@ -8,9 +8,6 @@ on:
       - "v*"
   workflow_dispatch:
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 jobs:
   build-tauri:
     permissions:
@@ -31,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: "npm"
 
       - name: Install Rust stable
@@ -56,20 +53,13 @@ jobs:
           mkdir -p dist-assets
 
           rm -rf /tmp/dmg_build && mkdir -p /tmp/dmg_build
-          APP_PATH=$(find src-tauri/target/release/bundle/macos -name "*.app" -maxdepth 1 | head -n 1)
-          if [ -d "$APP_PATH" ]; then
-            cp -r "$APP_PATH" /tmp/dmg_build/
-          fi
-          if [ -f "src-tauri/README.txt" ]; then
-            cp "src-tauri/README.txt" /tmp/dmg_build/
-          fi
+          cp -r "src-tauri/target/release/bundle/macos/Mori.app" /tmp/dmg_build/
+          cp "src-tauri/README.txt" /tmp/dmg_build/
           ln -s /Applications /tmp/dmg_build/Applications
-          hdiutil create -volname "AstroStar" -srcfolder /tmp/dmg_build -ov -format UDZO "dist-assets/AstroStar-v${VERSION}-macOS-arm64.dmg"
+          hdiutil create -volname "Mori" -srcfolder /tmp/dmg_build -ov -format UDZO "dist-assets/Mori-v${VERSION}-macOS-arm64.dmg"
           rm -rf /tmp/dmg_build
 
-          if [ -n "$APP_PATH" ]; then
-            tar -czf "dist-assets/AstroStar-v${VERSION}-macOS-arm64.app.tar.gz" -C "$(dirname "$APP_PATH")" "$(basename "$APP_PATH")"
-          fi
+          tar -czf "dist-assets/Mori-v${VERSION}-macOS-arm64.app.tar.gz" -C src-tauri/target/release/bundle/macos Mori.app
 
       - name: Prepare & Rename Release Assets (Windows)
         if: matrix.platform == 'windows-latest'
@@ -77,8 +67,8 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           mkdir -p dist-assets
-          find src-tauri/target/release/bundle/nsis -name "*.exe" -exec cp {} "dist-assets/AstroStar-v${VERSION}-Windows-x64-Setup.exe" \;
-          find src-tauri/target/release/bundle/msi -name "*.msi" -exec cp {} "dist-assets/AstroStar-v${VERSION}-Windows-x64.msi" \;
+          find src-tauri/target/release/bundle/nsis -name "*.exe" -exec cp {} "dist-assets/Mori-v${VERSION}-Windows-x64-Setup.exe" \;
+          find src-tauri/target/release/bundle/msi -name "*.msi" -exec cp {} "dist-assets/Mori-v${VERSION}-Windows-x64.msi" \;
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
