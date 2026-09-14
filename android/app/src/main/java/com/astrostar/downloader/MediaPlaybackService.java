@@ -79,11 +79,11 @@ public class MediaPlaybackService extends Service {
     public static final String EXTRA_POSITION   = "position";
 
     // Playback
-    private static MediaPlayer mediaPlayer = null;
-    private static FileInputStream currentFileInputStream = null;
-    private static boolean isPrepared = false;
-    private static boolean isPlaying  = false;
-    private static int     durationMs = 0;
+    private MediaPlayer mediaPlayer;
+    private FileInputStream currentFileInputStream = null;
+    private boolean isPrepared = false;
+    private boolean isPlaying  = false;
+    private int     durationMs = 0;
 
     // Session & audio
     private MediaSessionCompat mediaSession;
@@ -95,11 +95,11 @@ public class MediaPlaybackService extends Service {
     private final ExecutorService artworkLoader = Executors.newSingleThreadExecutor();
 
     // Current track metadata
-    private static String currentUrl        = null;
-    private static String currentTitle      = "Astro Star";
-    private static String currentArtist     = "Unknown";
-    private static String currentArtworkUrl = null;
-    private static Bitmap currentArtwork    = null;
+    private String currentUrl        = null;
+    private String currentTitle      = "Astro Star";
+    private String currentArtist     = "Unknown";
+    private String currentArtworkUrl = null;
+    private Bitmap currentArtwork    = null;
 
     private void notifyWebViewTrackChange(boolean isNext) {
         MainActivity act = MainActivity.getInstance();
