@@ -1,25 +1,21 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Mori Logo">
+  <img src="assets/icon.png" width="128" alt="AstroStar Logo">
 </p>
 
-<h1 align="center">Mori</h1>
+<h1 align="center">AstroStar</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v4.3.7-brown?style=flat-square" alt="Version">
-  <img src="https://img.shields.io/github/downloads/coflyn/Mori/total?style=flat-square&color=blue" alt="Downloads">
-  <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
-  <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
+  <img src="https://img.shields.io/badge/Version-v4.3.8-blueviolet?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/github/downloads/antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER/total?style=flat-square&color=blue" alt="Downloads">
+  <img src="https://img.shields.io/github/stars/antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER?style=flat-square&color=gold" alt="Stars">
+  <img src="https://img.shields.io/github/repo-size/antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER?style=flat-square&color=purple" alt="Repo Size">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
 </p>
 
 <div align="center">
 
-Mori is a fast and simple downloader for saving videos, photos, and music from 14 popular social media apps. Everything runs directly on your device, with no external servers, tracking, or ads. Your downloads stay private and in your control.
-
-<a href="https://sociabuzz.com/coflyn/tribe" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" />
-</a>
+AstroStar is a fast and simple downloader for saving videos, photos, and music from 14 popular social media apps. Everything runs directly on your device, with no external servers, tracking, or ads. Your downloads stay private and in your control.
 
 </div>
 
@@ -40,16 +36,16 @@ Mori is a fast and simple downloader for saving videos, photos, and music from 1
 
 - **All-in-One Social Downloader**: Easily save high-definition videos (without watermarks), photos, and music from 14 top platforms: TikTok, Instagram, YouTube, Twitter/X, Spotify, Apple Music, Pinterest, Facebook, Threads, Bandcamp, Pixiv, Bilibili, Douyin, and RedNote.
 - **One-Tap Playlist & Album Downloader**: Download entire albums or music playlists from **Spotify**, **Apple Music**, and **YouTube** in one go, no need to download songs one by one.
-- **Quick Save via Share Menu (Android)**: Found a video you like? Tap **Share** in any app and select Mori to download it immediately in a sleek popup overlay without leaving your current app.
-- **Multi-Link Batch Mode**: Paste several links at once and let Mori analyze and download them all automatically in the background.
+- **Quick Save via Share Menu (Android)**: Found a video you like? Tap **Share** in any app and select AstroStar to download it immediately in a sleek popup overlay without leaving your current app.
+- **Multi-Link Batch Mode**: Paste several links at once and let AstroStar analyze and download them all automatically in the background.
 - **Interactive Live Backgrounds**: Beautiful animated canvas backgrounds (Constellations, Smooth Waves, Floating Particles, and Fireflies).
 - **Built-in Media Preview**: Watch videos, listen to songs, and swipe through photo carousels right inside the app before or after downloading.
 - **Instant Photo-to-PDF Export**: Combine multi-photo posts or image galleries into a single, clean PDF file ready for offline reading or sharing.
 - **PIN & Biometric Privacy Lock**: Keep your download history private with a secure 4-digit PIN or fingerprint/Face ID biometric lock.
-- **Smart History & Folder Manager**: View your saved files anytime with clean folder paths (e.g. `Movies/Mori`, `Music/Mori`, `Pictures/Mori`), quick copy paths, and a long-press gesture to easily delete items.
+- **Smart History & Folder Manager**: View your saved files anytime with clean folder paths (e.g. `Movies/AstroStar`, `Music/AstroStar`, `Pictures/AstroStar`), quick copy paths, and a long-press gesture to easily delete items.
 - **Automatic Clipboard Detection**: Automatically detects copied links when you open the app for instant one-tap downloading.
 - **9 Languages with Full RTL Support**: Fully translated into English, Indonesian, Japanese, Korean, Simplified Chinese, Arabic (with full right-to-left layout), Russian, Tagalog, and Hindi.
-- **Background & Foreground Downloads**: Downloads continue running seamlessly even if you switch apps or minimize Mori, ensuring your videos and large playlists finish downloading without interruption.
+- **Background & Foreground Downloads**: Downloads continue running seamlessly even if you switch apps or minimize AstroStar, ensuring your videos and large playlists finish downloading without interruption.
 - **Instant Download Cancellation**: Cancel any in-progress download or batch queue with a single tap, instantly stopping network requests and automatically cleaning up partial files.
 - **Corrupt File Protection**: Safe downloads using temporary `.tmp` files that only save to your gallery once 100% complete, preventing broken or unplayable files.
 - **100% Private & Ad-Free**: No tracking, no data collection, no ads, and no external servers. Everything happens directly on your device.
@@ -85,9 +81,9 @@ Mori is a fast and simple downloader for saving videos, photos, and music from 1
 ## Project Structure
 
 ```
-Mori/
+AstroStar/
 ├── android/                    # Capacitor Android native project
-│   ├── app/src/main/java/com/mori/downloader/
+│   ├── app/src/main/java/com/astrostar/downloader/
 │   │   ├── MainActivity.java   # Main Capacitor Activity + native bridge
 │   │   └── ShareActivity.java  # Native Quick Save Share overlay & MediaStore indexer
 │   └── gradle/                 # Gradle build scripts & configurations
@@ -158,20 +154,20 @@ Mori/
 
 ## Security & Safety Notice
 
-Mori is **100% open-source, ad-free, and contains zero malware, spyware, or trackers**. All network requests and file downloads run locally on your device without external analytics servers.
+AstroStar is **100% open-source, ad-free, and contains zero malware, spyware, or trackers**. All network requests and file downloads run locally on your device without external analytics servers.
 
 > [!TIP]
 > **Doubtful or concerned about false-positive security warnings?**  
-> Because Mori release binaries (`.apk`, `.dmg`, `.exe`, `.ipa`) are open-source builds compiled without expensive commercial enterprise signing certificates, some OS security software or browsers may display standard false-positive warnings.  
+> Because AstroStar release binaries (`.apk`, `.dmg`, `.exe`, `.ipa`) are open-source builds compiled without expensive commercial enterprise signing certificates, some OS security software or browsers may display standard false-positive warnings.  
 > If you have any doubts, you can upload and scan any release file directly on **[VirusTotal](https://www.virustotal.com/)** before installing!
 
 > [!NOTE]
-> **macOS Gatekeeper Warning ("Mori" is damaged and can't be opened):**  
+> **macOS Gatekeeper Warning ("AstroStar" is damaged and can't be opened):**  
 > When downloading the `.dmg` or `.app` via web browsers (Brave, Safari, Chrome), macOS flags unnotarized internet downloads with a quarantine attribute (`com.apple.quarantine`).  
-> To open Mori smoothly on macOS:
+> To open AstroStar smoothly on macOS:
 >
-> 1. Run in Terminal: `sudo xattr -cr /Applications/Mori.app`
-> 2. Or **Right-Click** (Control + Click) `Mori.app` in Finder → Select **Open** → Click **Open**.
+> 1. Run in Terminal: `sudo xattr -cr /Applications/AstroStar.app`
+> 2. Or **Right-Click** (Control + Click) `AstroStar.app` in Finder → Select **Open** → Click **Open**.
 
 > [!NOTE]
 > **Android Play Protect Warning:**  
@@ -179,7 +175,7 @@ Mori is **100% open-source, ad-free, and contains zero malware, spyware, or trac
 
 ## How to Use
 
-1. Copy a link from a supported platform or Share it directly to Mori.
+1. Copy a link from a supported platform or Share it directly to AstroStar.
 2. Use the **Paste** button or let the auto-detection handle the link.
 3. Tap **Analyze** to verify the content.
 4. Preview the media (swipe through carousels if available).
@@ -188,16 +184,16 @@ Mori is **100% open-source, ad-free, and contains zero malware, spyware, or trac
 
 ## For Developers
 
-Mori is built using Tauri, Capacitor, and Vanilla JS for high performance.
+AstroStar is built using Tauri, Capacitor, and Vanilla JS for high performance.
 
-- **On macOS & Windows (Desktop)**: Powered by **Tauri v2** with a native Rust HTTP engine (`tauri_http_request`) to bypass CORS and save downloads directly to your system's `Downloads/Mori` folder.
-- **On Android & iOS**: Uses `CapacitorHttp` to bypass CORS and download directly from the device IP. Files are saved to local device storage and accessible via the **Files app** (`On My iPhone/Mori`) on iOS.
+- **On macOS & Windows (Desktop)**: Powered by **Tauri v2** with a native Rust HTTP engine (`tauri_http_request`) to bypass CORS and save downloads directly to your system's `Downloads/AstroStar` folder.
+- **On Android & iOS**: Uses `CapacitorHttp` to bypass CORS and download directly from the device IP. Files are saved to local device storage and accessible via the **Files app** (`On My iPhone/AstroStar`) on iOS.
 - **On Web**: Preview mode only — runs directly in the browser with limited functionality.
 
 ### Building for Android
 
 > [!TIP]
-> **Pre-built APKs**: You can download pre-compiled `.apk` binaries directly from **[GitHub Releases](https://github.com/coflyn/Mori/releases)** or from the Actions tab!
+> **Pre-built APKs**: You can download pre-compiled `.apk` binaries directly from **[GitHub Releases](https://github.com/antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER/releases)** or from the Actions tab!
 
 #### Single-Command Quick Build
 
@@ -219,16 +215,16 @@ npx cap sync android
 cd android && ./gradlew assembleRelease
 
 # 3. Output located at:
-#    android/app/build/outputs/apk/release/Mori v{VERSION}.apk
+#    android/app/build/outputs/apk/release/AstroStar v{VERSION}.apk
 ```
 
 For a release APK, first generate a signing keystore (one-time):
 
 ```bash
-keytool -genkey -v -keystore android/app/release.keystore -alias mori \
+keytool -genkey -v -keystore android/app/release.keystore -alias astrostar \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass android123 -keypass android123 \
-  -dname "CN=Mori, OU=Development, O=MoriApp, L=Unknown, ST=Unknown, C=ID"
+  -dname "CN=AstroStar, OU=Development, O=AstroStarApp, L=Unknown, ST=Unknown, C=ID"
 ```
 
 Then add `signingConfigs` block to `android/app/build.gradle`:
@@ -239,7 +235,7 @@ android {
         release {
             storeFile file('release.keystore')
             storePassword 'android123'
-            keyAlias 'mori'
+            keyAlias 'astrostar'
             keyPassword 'android123'
         }
     }
@@ -258,11 +254,11 @@ Build the signed release APK:
 cd android && ./gradlew assembleRelease
 ```
 
-Output at: `android/app/build/outputs/apk/release/Mori v{VERSION}.apk`
+Output at: `android/app/build/outputs/apk/release/AstroStar v{VERSION}.apk`
 
 ### Running & Building for Desktop (macOS & Windows)
 
-Mori uses **Tauri v2** for lightweight, high-performance desktop apps on macOS (.dmg, .app) and Windows (.msi, .exe).
+AstroStar uses **Tauri v2** for lightweight, high-performance desktop apps on macOS (.dmg, .app) and Windows (.msi, .exe).
 
 #### Development Mode
 
@@ -276,8 +272,8 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-- **macOS Release Asset**: `Mori-v4.3.7-macOS-arm64.dmg` & `Mori-v4.3.7-macOS-arm64.app.tar.gz`
-- **Windows Release Asset**: `Mori-v4.3.7-Windows-x64-Setup.exe` & `Mori-v4.3.7-Windows-x64.msi`
+- **macOS Release Asset**: `AstroStar-v4.3.8-macOS-arm64.dmg` & `AstroStar-v4.3.8-macOS-arm64.app.tar.gz`
+- **Windows Release Asset**: `AstroStar-v4.3.8-Windows-x64-Setup.exe` & `AstroStar-v4.3.8-Windows-x64.msi`
 
 ### Running & Building for iOS
 
@@ -310,17 +306,17 @@ npm run build:ios:ipa
 npx cap sync ios
 
 # 2. Compile target for generic iOS device without code signing
-xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/Mori.xcarchive archive CODE_SIGNING_ALLOWED=NO
+xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/AstroStar.xcarchive archive CODE_SIGNING_ALLOWED=NO
 
 # 3. Package compiled app bundle into a Payload folder and Zip to IPA
-mkdir -p Payload && cp -r build/Mori.xcarchive/Products/Applications/App.app Payload/ && zip -r "Mori v4.3.7.ipa" Payload && rm -rf Payload build
+mkdir -p Payload && cp -r build/AstroStar.xcarchive/Products/Applications/App.app Payload/ && zip -r "AstroStar-v4.3.8-iOS-Unsigned.ipa" Payload && rm -rf Payload build
 ```
 
-This outputs `Mori v4.3.7.ipa` in your project root directory, ready to be sideloaded via AltStore, Sideloadly, Scarlet, or TrollStore.
+This outputs `AstroStar-v4.3.8-iOS-Unsigned.ipa` in your project root directory, ready to be sideloaded via AltStore, Sideloadly, Scarlet, or TrollStore.
 
 ## iOS Sideloading Guide
 
-Since Mori is client-side only and not distributed on the Apple App Store, iOS users can install `Mori v4.3.7.ipa` using one of the following sideloading methods:
+Since AstroStar is client-side only and not distributed on the Apple App Store, iOS users can install `AstroStar-v4.3.8-iOS-Unsigned.ipa` using one of the following sideloading methods:
 
 - **AltStore / Sideloadly**: Best for all iOS versions. Requires a PC/Mac for initial installation, and app signatures need to be refreshed every 7 days (free personal Apple ID).
 - **TrollStore**: Best for compatible iOS versions. Installs permanently, requires no computer after setup, and does not expire.
@@ -328,10 +324,9 @@ Since Mori is client-side only and not distributed on the Apple App Store, iOS u
 
 ---
 
-Developed with ❤️ by coflyn.
-GitHub: https://github.com/coflyn
-Instagram: @\_coflyn
+Developed with ❤️ by **antyhacker75-cmyk**.  
+GitHub Repository: https://github.com/antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER
 
 ## License
 
-Mori is released under the **MIT License**. Feel free to use, modify, and distribute it.
+AstroStar is released under the **MIT License**. Feel free to use, modify, and distribute it.
