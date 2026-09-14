@@ -234,7 +234,7 @@ public class MediaPlaybackService extends Service {
                         if (ms >= 0) { seekTo(ms); break; }
                     }
                     if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
-                        loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+                        loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
                     } else {
                         play();
                     }
@@ -317,7 +317,7 @@ public class MediaPlaybackService extends Service {
             @Override
             public void onPlay() {
                 if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
-                    loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+                    loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
                 } else {
                     play();
                 }
@@ -682,7 +682,7 @@ public class MediaPlaybackService extends Service {
     private void play() {
         if (mediaPlayer == null) {
             if (currentUrl != null && !currentUrl.isEmpty()) {
-                loadTrack(currentUrl, currentTitle, currentArtist, currentArtwork);
+                loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
             }
             return;
         }
