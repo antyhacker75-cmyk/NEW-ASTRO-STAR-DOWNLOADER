@@ -155,6 +155,24 @@ header h1 {
   text-transform: uppercase;
   letter-spacing: 2px;
 }
+.app-logo-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.app-header-logo {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+.app-header-logo:hover {
+  transform: scale(1.06);
+  box-shadow: 0 12px 28px rgba(var(--primary-rgb), 0.35), 0 0 0 1px rgba(var(--primary-rgb), 0.5);
+}
 header p { color: var(--text-secondary); font-size: 1rem; }
 
 /* ============================================================
