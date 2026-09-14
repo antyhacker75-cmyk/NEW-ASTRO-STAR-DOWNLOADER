@@ -2020,14 +2020,24 @@ input[type="text"]:focus { box-shadow: 4px 4px 0px var(--primary); }
 }
 
 #redownloadBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  padding: 12px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 20px;
   background-color: var(--primary);
-  color: var(--bg-color);
+  color: var(--on-primary, #ffffff);
   border: none;
+  border-radius: var(--radius-l, 12px);
+  font-size: 0.88rem;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 0.2px;
+  text-transform: none;
   cursor: pointer;
+  transition: var(--transition);
 }
 
 .hidden { display: none !important; }
