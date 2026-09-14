@@ -253,29 +253,25 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
   // Next / Previous slide actions
   const triggerNext = () => {
-    const modalNextBtn = document.getElementById("modalSlideNextBtn");
-    const mainNextBtn = document.getElementById("slideNextBtn");
-    if (modalNextBtn && !modalNextBtn.disabled && modalNextBtn.offsetParent !== null) {
-      modalNextBtn.click();
-    } else if (mainNextBtn && !mainNextBtn.disabled && mainNextBtn.offsetParent !== null) {
-      mainNextBtn.click();
+    const nextSlideBtn = document.getElementById("slideNextBtn");
+    if (nextSlideBtn && !nextSlideBtn.disabled) {
+      nextSlideBtn.click();
+    } else if (canUseNativeService && window.AstroStarMainBridge?.nextMedia) {
+      window.AstroStarMainBridge.nextMedia();
     } else {
-      // If single item or at end, seek to start
+      // If single item, loop to start
       handleSeek(0);
     }
   };
 
   const triggerPrev = () => {
+    const prevSlideBtn = document.getElementById("slidePrevBtn");
     if (currentSec > 3) {
       handleSeek(0);
-      return;
-    }
-    const modalPrevBtn = document.getElementById("modalSlidePrevBtn");
-    const mainPrevBtn = document.getElementById("slidePrevBtn");
-    if (modalPrevBtn && !modalPrevBtn.disabled && modalPrevBtn.offsetParent !== null) {
-      modalPrevBtn.click();
-    } else if (mainPrevBtn && !mainPrevBtn.disabled && mainPrevBtn.offsetParent !== null) {
-      mainPrevBtn.click();
+    } else if (prevSlideBtn && !prevSlideBtn.disabled) {
+      prevSlideBtn.click();
+    } else if (canUseNativeService && window.AstroStarMainBridge?.prevMedia) {
+      window.AstroStarMainBridge.prevMedia();
     } else {
       handleSeek(0);
     }
@@ -430,28 +426,19 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       console.warn("Failed to loadMedia via Native Bridge:", e);
     }
 
-    const syncNativeProgress = (posMs, durMs) => {
+    window.astroStarMediaProgress = (posMs, durMs) => {
       durationSec = durMs / 1000;
       currentSec = posMs / 1000;
       updateUIState(isPlaying, durationSec, currentSec);
       updateMediaSessionPositionState(durationSec, currentSec);
     };
 
-    const syncNativeState = (state) => {
+    window.astroStarMediaState = (state) => {
       if (!state) return;
       isPlaying = !!state.isPlaying;
       if (state.duration) durationSec = state.duration / 1000;
       updateUIState(isPlaying, durationSec, currentSec);
     };
-
-    window.astroStarMediaProgress = syncNativeProgress;
-    window.moriMediaProgress = syncNativeProgress;
-    window.astroStarMediaState = syncNativeState;
-    window.moriMediaState = syncNativeState;
-    window.astroStarMediaNextTrack = triggerNext;
-    window.moriMediaNextTrack = triggerNext;
-    window.astroStarMediaPrevTrack = triggerPrev;
-    window.moriMediaPrevTrack = triggerPrev;
   } else {
     // Web / Chrome / PWA mode
     syncMediaSession();
@@ -766,26 +753,8 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
 
   fsBtn.onclick = (e) => {
     e.stopPropagation();
-    const bridge = window.AstroStarMainBridge || window.MoriMainBridge;
-    if (bridge && typeof bridge.toggleOrientation === "function") {
-      bridge.toggleOrientation();
-    }
-    if (document.fullscreenElement) {
-      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-    } else {
-      if (video.requestFullscreen) {
-        video.requestFullscreen().catch(() => {
-          if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
-          else if (playerContainer.requestFullscreen) playerContainer.requestFullscreen().catch(() => {});
-        });
-      } else if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen();
-      } else if (playerContainer.requestFullscreen) {
-        playerContainer.requestFullscreen().catch(() => {});
-      }
-    }
+    if (video.requestFullscreen) video.requestFullscreen();
+    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
   };
 
   const seekToPos = (clientX) => {

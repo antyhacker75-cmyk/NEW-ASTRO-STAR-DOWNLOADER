@@ -197,7 +197,7 @@ function processSharedText(text) {
 }
 
 // Handle Shared Intent from Native Android
-window.addEventListener("moriShareIntent", (e) => {
+window.addEventListener("astroStarShareIntent", (e) => {
   try {
     let data = e.detail;
     if (typeof data === "string") {
@@ -216,9 +216,9 @@ window.addEventListener("moriShareIntent", (e) => {
 
 // Startup check for shared text (fallback for cold starts)
 setTimeout(() => {
-  if (window.moriShareText) {
-    processSharedText(window.moriShareText);
-    window.moriShareText = null; // Clear it
+  if (window.astroStarShareText) {
+    processSharedText(window.astroStarShareText);
+    window.astroStarShareText = null; // Clear it
   }
 }, 1500);
 
@@ -251,12 +251,8 @@ if (App && typeof App.addListener === "function") {
         updateGreeting();
       } catch (_) {}
 
-      const loopSetting =
-        localStorage.getItem("astrostar_loop") !== "false" &&
-        localStorage.getItem("mori_loop") !== "false";
-      const autoPaste =
-        localStorage.getItem("astrostar_auto_paste") !== "false" &&
-        localStorage.getItem("mori_auto_paste") !== "false";
+      const loopSetting = localStorage.getItem("astrostar_loop") !== "false";
+      const autoPaste = localStorage.getItem("astrostar_auto_paste") !== "false";
       if (autoPaste) {
         setIntentPending(true); // Assume a share might be coming
 
@@ -282,10 +278,10 @@ if (App && typeof App.addListener === "function") {
 export function mergePendingHistorySync() {
   try {
     let raw = null;
-    if (window.MoriMainBridge?.getPendingHistoryList) {
-      raw = window.MoriMainBridge.getPendingHistoryList();
-    } else if (window.MoriShareBridge?.getPendingHistoryList) {
-      raw = window.MoriShareBridge.getPendingHistoryList();
+    if (window.AstroStarMainBridge?.getPendingHistoryList) {
+      raw = window.AstroStarMainBridge.getPendingHistoryList();
+    } else if (window.AstroStarShareBridge?.getPendingHistoryList) {
+      raw = window.AstroStarShareBridge.getPendingHistoryList();
     }
 
     if (!raw || raw === "[]") return false;
@@ -296,7 +292,7 @@ export function mergePendingHistorySync() {
     const items = itemsRaw.map((x) =>
       typeof x === "string" ? JSON.parse(x) : x,
     );
-    let history = JSON.parse(localStorage.getItem("mori_history") || "[]");
+    let history = JSON.parse(localStorage.getItem("astrostar_history") || "[]");
 
     items.forEach((newItem) => {
       if (!newItem || !newItem.title) return;
@@ -320,12 +316,12 @@ export function mergePendingHistorySync() {
       history.unshift(newItem);
     });
 
-    localStorage.setItem("mori_history", JSON.stringify(history.slice(0, 100)));
+    localStorage.setItem("astrostar_history", JSON.stringify(history.slice(0, 100)));
 
-    if (window.MoriMainBridge?.clearPendingHistoryList) {
-      window.MoriMainBridge.clearPendingHistoryList();
-    } else if (window.MoriShareBridge?.clearPendingHistoryList) {
-      window.MoriShareBridge.clearPendingHistoryList();
+    if (window.AstroStarMainBridge?.clearPendingHistoryList) {
+      window.AstroStarMainBridge.clearPendingHistoryList();
+    } else if (window.AstroStarShareBridge?.clearPendingHistoryList) {
+      window.AstroStarShareBridge.clearPendingHistoryList();
     }
     return true;
   } catch (e) {
@@ -343,9 +339,9 @@ export function checkAndMergePendingHistory() {
 
 window.checkAndMergePendingHistorySync = mergePendingHistorySync;
 window.checkAndMergePendingHistory = checkAndMergePendingHistory;
-window.moriMergeShareHistoryList = checkAndMergePendingHistory;
+window.astroStarMergeShareHistoryList = checkAndMergePendingHistory;
 
-window.moriRefreshHistory = function () {
+window.astroStarRefreshHistory = function () {
   checkAndMergePendingHistory();
 };
 
