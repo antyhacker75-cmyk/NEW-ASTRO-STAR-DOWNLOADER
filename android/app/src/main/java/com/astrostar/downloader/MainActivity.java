@@ -164,6 +164,18 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void syncPlaybackState(boolean isPlaying, int positionMs, int durationMs) {
+            try {
+                Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
+                i.setAction(MediaPlaybackService.ACTION_SYNC_STATE);
+                i.putExtra(MediaPlaybackService.EXTRA_IS_PLAYING, isPlaying);
+                i.putExtra(MediaPlaybackService.EXTRA_POSITION, positionMs);
+                i.putExtra(MediaPlaybackService.EXTRA_DURATION, durationMs);
+                startPlaybackService(i);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+
+        @JavascriptInterface
         public void nextMedia() {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);

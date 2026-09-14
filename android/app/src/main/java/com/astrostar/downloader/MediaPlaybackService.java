@@ -67,15 +67,20 @@ public class MediaPlaybackService extends Service {
     public static final String ACTION_SEEK   = "com.astrostar.downloader.MEDIA_SEEK";
     public static final String ACTION_NEXT   = "com.astrostar.downloader.MEDIA_NEXT";
     public static final String ACTION_PREV   = "com.astrostar.downloader.MEDIA_PREV";
+    public static final String ACTION_SYNC_STATE = "com.astrostar.downloader.MEDIA_SYNC_STATE";
 
     public static final String EXTRA_URL     = "url";
     public static final String EXTRA_TITLE   = "title";
     public static final String EXTRA_ARTIST  = "artist";
     public static final String EXTRA_ARTWORK = "artwork";
     public static final String EXTRA_SEEK    = "seek";
+    public static final String EXTRA_IS_PLAYING = "is_playing";
+    public static final String EXTRA_DURATION   = "duration";
+    public static final String EXTRA_POSITION   = "position";
 
     // Playback
     private MediaPlayer mediaPlayer;
+    private FileInputStream currentFileInputStream = null;
     private boolean isPrepared = false;
     private boolean isPlaying  = false;
     private int     durationMs = 0;
@@ -105,6 +110,34 @@ public class MediaPlaybackService extends Service {
                     String fn2 = isNext ? "window.moriMediaNextTrack" : "window.moriMediaPrevTrack";
                     act.getBridge().getWebView().evaluateJavascript(
                         "(function(){ if (typeof " + fn1 + " === 'function') { " + fn1 + "(); } else if (typeof " + fn2 + " === 'function') { " + fn2 + "(); } })();",
+                        null
+                    );
+                } catch (Exception ignored) {}
+            });
+        }
+    }
+
+    private void notifyWebViewPlayPause(boolean play) {
+        MainActivity act = MainActivity.getInstance();
+        if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
+            act.runOnUiThread(() -> {
+                try {
+                    act.getBridge().getWebView().evaluateJavascript(
+                        "(function(){ if (typeof window.astroStarMediaRemotePlayPause === 'function') { window.astroStarMediaRemotePlayPause(" + play + "); } else if (typeof window.moriMediaRemotePlayPause === 'function') { window.moriMediaRemotePlayPause(" + play + "); } })();",
+                        null
+                    );
+                } catch (Exception ignored) {}
+            });
+        }
+    }
+
+    private void notifyWebViewSeek(long posMs) {
+        MainActivity act = MainActivity.getInstance();
+        if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
+            act.runOnUiThread(() -> {
+                try {
+                    act.getBridge().getWebView().evaluateJavascript(
+                        "(function(){ if (typeof window.astroStarMediaRemoteSeek === 'function') { window.astroStarMediaRemoteSeek(" + posMs + "); } else if (typeof window.moriMediaRemoteSeek === 'function') { window.moriMediaRemoteSeek(" + posMs + "); } })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -209,6 +242,22 @@ public class MediaPlaybackService extends Service {
                     if (ms >= 0) seekTo(ms);
                     break;
                 }
+                case ACTION_SYNC_STATE: {
+                    boolean p = intent.getBooleanExtra(EXTRA_IS_PLAYING, isPlaying);
+                    int dur = intent.getIntExtra(EXTRA_DURATION, durationMs);
+                    int pos = intent.getIntExtra(EXTRA_POSITION, 0);
+                    if (dur > 0 && dur != durationMs) {
+                        durationMs = dur;
+                        updateMetadata();
+                    }
+                    isPlaying = p;
+                    if (mediaSession != null && !mediaSession.isActive()) {
+                        mediaSession.setActive(true);
+                    }
+                    updatePlaybackState(p ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED, pos);
+                    pushNotification();
+                    break;
+                }
                 case ACTION_STOP:   stopPlayback(); stopSelf(); break;
                 case ACTION_NEXT:   notifyWebViewTrackChange(true);  break;
                 case ACTION_PREV:   notifyWebViewTrackChange(false); break;
@@ -222,6 +271,10 @@ public class MediaPlaybackService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacks(positionTicker);
+        if (currentFileInputStream != null) {
+            try { currentFileInputStream.close(); } catch (Exception ignored) {}
+            currentFileInputStream = null;
+        }
         if (mediaPlayer != null) {
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
@@ -257,12 +310,39 @@ public class MediaPlaybackService extends Service {
         mediaSession.setMediaButtonReceiver(mbrPendingIntent);
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override public void onPlay()             { play(); }
-            @Override public void onPause()            { pause(); }
-            @Override public void onStop()             { stopPlayback(); }
-            @Override public void onSkipToNext()       { notifyWebViewTrackChange(true); }
-            @Override public void onSkipToPrevious()   { notifyWebViewTrackChange(false); }
-            @Override public void onSeekTo(long pos)   { seekTo((int) pos); }
+            @Override
+            public void onPlay() {
+                play();
+                notifyWebViewPlayPause(true);
+            }
+
+            @Override
+            public void onPause() {
+                pause();
+                notifyWebViewPlayPause(false);
+            }
+
+            @Override
+            public void onStop() {
+                stopPlayback();
+                notifyWebViewPlayPause(false);
+            }
+
+            @Override
+            public void onSkipToNext() {
+                notifyWebViewTrackChange(true);
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                notifyWebViewTrackChange(false);
+            }
+
+            @Override
+            public void onSeekTo(long pos) {
+                seekTo((int) pos);
+                notifyWebViewSeek(pos);
+            }
 
             @Override
             public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
@@ -270,15 +350,35 @@ public class MediaPlaybackService extends Service {
                     android.view.KeyEvent ke = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                     if (ke != null && ke.getAction() == android.view.KeyEvent.ACTION_DOWN) {
                         int code = ke.getKeyCode();
-                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) { play(); return true; }
-                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) { pause(); return true; }
-                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
-                            if (isPlaying) pause(); else play();
+                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) {
+                            play();
+                            notifyWebViewPlayPause(true);
+                            return true;
+                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) {
+                            pause();
+                            notifyWebViewPlayPause(false);
+                            return true;
+                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
+                            if (isPlaying) {
+                                pause();
+                                notifyWebViewPlayPause(false);
+                            } else {
+                                play();
+                                notifyWebViewPlayPause(true);
+                            }
+                            return true;
+                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) {
+                            notifyWebViewTrackChange(true);
+                            return true;
+                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                            notifyWebViewTrackChange(false);
+                            return true;
+                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) {
+                            stopPlayback();
+                            notifyWebViewPlayPause(false);
+                            stopSelf();
                             return true;
                         }
-                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) { notifyWebViewTrackChange(true); return true; }
-                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) { notifyWebViewTrackChange(false); return true; }
-                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) { stopPlayback(); stopSelf(); return true; }
                     }
                 }
                 return super.onMediaButtonEvent(mediaButtonEvent);
@@ -468,6 +568,10 @@ public class MediaPlaybackService extends Service {
         }
 
         // Kill any previous player
+        if (currentFileInputStream != null) {
+            try { currentFileInputStream.close(); } catch (Exception ignored) {}
+            currentFileInputStream = null;
+        }
         if (mediaPlayer != null) {
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
@@ -506,9 +610,8 @@ public class MediaPlaybackService extends Service {
                 String rawFilePath = playUrl.startsWith("file://") ? playUrl.substring(7) : playUrl;
                 File f = new File(rawFilePath);
                 if (f.exists() && f.canRead()) {
-                    FileInputStream fis = new FileInputStream(f);
-                    mediaPlayer.setDataSource(fis.getFD());
-                    fis.close();
+                    currentFileInputStream = new FileInputStream(f);
+                    mediaPlayer.setDataSource(currentFileInputStream.getFD());
                 } else {
                     mediaPlayer.setDataSource(this, Uri.parse(playUrl.startsWith("file://") ? playUrl : "file://" + playUrl));
                 }
@@ -568,6 +671,9 @@ public class MediaPlaybackService extends Service {
         }
         if (!requestAudioFocus()) return;
         try {
+            if (mediaSession != null && !mediaSession.isActive()) {
+                mediaSession.setActive(true);
+            }
             mediaPlayer.start();
             isPlaying = true;
             updatePlaybackState(PlaybackStateCompat.STATE_PLAYING,
@@ -610,6 +716,10 @@ public class MediaPlaybackService extends Service {
 
     private void stopPlayback() {
         handler.removeCallbacks(positionTicker);
+        if (currentFileInputStream != null) {
+            try { currentFileInputStream.close(); } catch (Exception ignored) {}
+            currentFileInputStream = null;
+        }
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.stop();
