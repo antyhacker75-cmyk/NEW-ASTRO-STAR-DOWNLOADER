@@ -319,14 +319,7 @@ export function updateSliderUI() {
 }
 
 export function renderResult(result, originalUrl) {
-  const processedDownloads = (result.downloads || []).map((dl) => ({
-    ...dl,
-    title: dl.title || result.title || "",
-    author: dl.author || dl.artist || result.author || result.artist || "",
-    artist: dl.author || dl.artist || result.author || result.artist || "AstroStar Downloader",
-    thumbnail: dl.thumbnail || result.thumbnail || "",
-  }));
-  setSlideData(processedDownloads);
+  setSlideData(result.downloads);
   setCurrentSlideIndex(0);
 
   const slidesWrapper = document.getElementById("slidesWrapper");
