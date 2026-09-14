@@ -67,20 +67,15 @@ public class MediaPlaybackService extends Service {
     public static final String ACTION_SEEK   = "com.astrostar.downloader.MEDIA_SEEK";
     public static final String ACTION_NEXT   = "com.astrostar.downloader.MEDIA_NEXT";
     public static final String ACTION_PREV   = "com.astrostar.downloader.MEDIA_PREV";
-    public static final String ACTION_SYNC_STATE = "com.astrostar.downloader.MEDIA_SYNC_STATE";
 
     public static final String EXTRA_URL     = "url";
     public static final String EXTRA_TITLE   = "title";
     public static final String EXTRA_ARTIST  = "artist";
     public static final String EXTRA_ARTWORK = "artwork";
     public static final String EXTRA_SEEK    = "seek";
-    public static final String EXTRA_IS_PLAYING = "is_playing";
-    public static final String EXTRA_DURATION   = "duration";
-    public static final String EXTRA_POSITION   = "position";
 
     // Playback
     private MediaPlayer mediaPlayer;
-    private FileInputStream currentFileInputStream = null;
     private boolean isPrepared = false;
     private boolean isPlaying  = false;
     private int     durationMs = 0;
@@ -110,34 +105,6 @@ public class MediaPlaybackService extends Service {
                     String fn2 = isNext ? "window.moriMediaNextTrack" : "window.moriMediaPrevTrack";
                     act.getBridge().getWebView().evaluateJavascript(
                         "(function(){ if (typeof " + fn1 + " === 'function') { " + fn1 + "(); } else if (typeof " + fn2 + " === 'function') { " + fn2 + "(); } })();",
-                        null
-                    );
-                } catch (Exception ignored) {}
-            });
-        }
-    }
-
-    private void notifyWebViewPlayPause(boolean play) {
-        MainActivity act = MainActivity.getInstance();
-        if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
-            act.runOnUiThread(() -> {
-                try {
-                    act.getBridge().getWebView().evaluateJavascript(
-                        "(function(){ if (typeof window.astroStarMediaRemotePlayPause === 'function') { window.astroStarMediaRemotePlayPause(" + play + "); } else if (typeof window.moriMediaRemotePlayPause === 'function') { window.moriMediaRemotePlayPause(" + play + "); } })();",
-                        null
-                    );
-                } catch (Exception ignored) {}
-            });
-        }
-    }
-
-    private void notifyWebViewSeek(long posMs) {
-        MainActivity act = MainActivity.getInstance();
-        if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
-            act.runOnUiThread(() -> {
-                try {
-                    act.getBridge().getWebView().evaluateJavascript(
-                        "(function(){ if (typeof window.astroStarMediaRemoteSeek === 'function') { window.astroStarMediaRemoteSeek(" + posMs + "); } else if (typeof window.moriMediaRemoteSeek === 'function') { window.moriMediaRemoteSeek(" + posMs + "); } })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -206,7 +173,6 @@ public class MediaPlaybackService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
-            startForegroundMedia();
             if (intent == null) return START_NOT_STICKY;
             String action = intent.getAction();
             if (action == null) return START_NOT_STICKY;
@@ -233,33 +199,13 @@ public class MediaPlaybackService extends Service {
                         int ms = intent.getIntExtra(EXTRA_SEEK, -1);
                         if (ms >= 0) { seekTo(ms); break; }
                     }
-                    if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
-                        loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
-                    } else {
-                        play();
-                    }
+                    play();
                     break;
                 }
                 case ACTION_PAUSE:  pause();       break;
                 case ACTION_SEEK: {
                     int ms = intent.getIntExtra(EXTRA_SEEK, -1);
                     if (ms >= 0) seekTo(ms);
-                    break;
-                }
-                case ACTION_SYNC_STATE: {
-                    boolean p = intent.getBooleanExtra(EXTRA_IS_PLAYING, isPlaying);
-                    int dur = intent.getIntExtra(EXTRA_DURATION, durationMs);
-                    int pos = intent.getIntExtra(EXTRA_POSITION, 0);
-                    if (dur > 0 && dur != durationMs) {
-                        durationMs = dur;
-                        updateMetadata();
-                    }
-                    isPlaying = p;
-                    if (mediaSession != null && !mediaSession.isActive()) {
-                        mediaSession.setActive(true);
-                    }
-                    updatePlaybackState(p ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED, pos);
-                    pushNotification();
                     break;
                 }
                 case ACTION_STOP:   stopPlayback(); stopSelf(); break;
@@ -275,10 +221,6 @@ public class MediaPlaybackService extends Service {
     @Override
     public void onDestroy() {
         handler.removeCallbacks(positionTicker);
-        if (currentFileInputStream != null) {
-            try { currentFileInputStream.close(); } catch (Exception ignored) {}
-            currentFileInputStream = null;
-        }
         if (mediaPlayer != null) {
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
@@ -314,43 +256,12 @@ public class MediaPlaybackService extends Service {
         mediaSession.setMediaButtonReceiver(mbrPendingIntent);
 
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override
-            public void onPlay() {
-                if (mediaPlayer == null && currentUrl != null && !currentUrl.isEmpty()) {
-                    loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
-                } else {
-                    play();
-                }
-                notifyWebViewPlayPause(true);
-            }
-
-            @Override
-            public void onPause() {
-                pause();
-                notifyWebViewPlayPause(false);
-            }
-
-            @Override
-            public void onStop() {
-                stopPlayback();
-                notifyWebViewPlayPause(false);
-            }
-
-            @Override
-            public void onSkipToNext() {
-                notifyWebViewTrackChange(true);
-            }
-
-            @Override
-            public void onSkipToPrevious() {
-                notifyWebViewTrackChange(false);
-            }
-
-            @Override
-            public void onSeekTo(long pos) {
-                seekTo((int) pos);
-                notifyWebViewSeek(pos);
-            }
+            @Override public void onPlay()             { play(); }
+            @Override public void onPause()            { pause(); }
+            @Override public void onStop()             { stopPlayback(); }
+            @Override public void onSkipToNext()       { notifyWebViewTrackChange(true); }
+            @Override public void onSkipToPrevious()   { notifyWebViewTrackChange(false); }
+            @Override public void onSeekTo(long pos)   { seekTo((int) pos); }
 
             @Override
             public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
@@ -358,35 +269,15 @@ public class MediaPlaybackService extends Service {
                     android.view.KeyEvent ke = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                     if (ke != null && ke.getAction() == android.view.KeyEvent.ACTION_DOWN) {
                         int code = ke.getKeyCode();
-                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) {
-                            play();
-                            notifyWebViewPlayPause(true);
-                            return true;
-                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) {
-                            pause();
-                            notifyWebViewPlayPause(false);
-                            return true;
-                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
-                            if (isPlaying) {
-                                pause();
-                                notifyWebViewPlayPause(false);
-                            } else {
-                                play();
-                                notifyWebViewPlayPause(true);
-                            }
-                            return true;
-                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) {
-                            notifyWebViewTrackChange(true);
-                            return true;
-                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                            notifyWebViewTrackChange(false);
-                            return true;
-                        } else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) {
-                            stopPlayback();
-                            notifyWebViewPlayPause(false);
-                            stopSelf();
+                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) { play(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) { pause(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
+                            if (isPlaying) pause(); else play();
                             return true;
                         }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) { notifyWebViewTrackChange(true); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) { notifyWebViewTrackChange(false); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) { stopPlayback(); stopSelf(); return true; }
                     }
                 }
                 return super.onMediaButtonEvent(mediaButtonEvent);
@@ -410,15 +301,6 @@ public class MediaPlaybackService extends Service {
         mediaSession.setActive(true);
     }
 
-    private PendingIntent buildServicePendingIntent(String action, int requestCode) {
-        Intent intent = new Intent(this, MediaPlaybackService.class).setAction(action);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return PendingIntent.getForegroundService(this, requestCode, intent, pendingFlags());
-        } else {
-            return PendingIntent.getService(this, requestCode, intent, pendingFlags());
-        }
-    }
-
     private void updateMetadata() {
         if (mediaSession == null) return;
 
@@ -426,10 +308,7 @@ public class MediaPlaybackService extends Service {
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "AstroStar Downloader")
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, currentArtist)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, currentTitle)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentArtist)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, "AstroStar Downloader")
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "AstroStar Downloader")
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs);
 
         if (currentArtwork != null) {
@@ -576,10 +455,6 @@ public class MediaPlaybackService extends Service {
         }
 
         // Kill any previous player
-        if (currentFileInputStream != null) {
-            try { currentFileInputStream.close(); } catch (Exception ignored) {}
-            currentFileInputStream = null;
-        }
         if (mediaPlayer != null) {
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
@@ -606,36 +481,29 @@ public class MediaPlaybackService extends Service {
                     playUrl = "/" + playUrl;
                 }
             }
-            if (playUrl.startsWith("/") || playUrl.startsWith("file://")) {
-                try {
-                    playUrl = Uri.decode(playUrl);
-                } catch (Exception ignored) {}
-            }
 
             if (playUrl.startsWith("content://")) {
                 mediaPlayer.setDataSource(this, Uri.parse(playUrl));
-            } else if (playUrl.startsWith("file://") || playUrl.startsWith("/")) {
-                String rawFilePath = playUrl.startsWith("file://") ? playUrl.substring(7) : playUrl;
-                File f = new File(rawFilePath);
+            } else if (playUrl.startsWith("file://")) {
+                Uri parsedUri = Uri.parse(playUrl);
+                String filePath = parsedUri.getPath();
+                File f = new File(filePath != null ? filePath : playUrl.substring(7));
                 if (f.exists() && f.canRead()) {
-                    currentFileInputStream = new FileInputStream(f);
-                    mediaPlayer.setDataSource(currentFileInputStream.getFD());
+                    FileInputStream fis = new FileInputStream(f);
+                    mediaPlayer.setDataSource(fis.getFD());
+                    fis.close();
                 } else {
-                    mediaPlayer.setDataSource(this, Uri.parse(playUrl.startsWith("file://") ? playUrl : "file://" + playUrl));
+                    mediaPlayer.setDataSource(this, parsedUri);
                 }
-            } else if (playUrl.startsWith("http://") || playUrl.startsWith("https://")) {
-                java.util.Map<String, String> headers = new java.util.HashMap<>();
-                headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-                if (playUrl.contains("soundloaders")) {
-                    headers.put("Referer", "https://soundloaders.app/");
-                    headers.put("Origin", "https://soundloaders.app");
-                } else if (playUrl.contains("spotidown")) {
-                    headers.put("Referer", "https://spotidown.app/");
-                    headers.put("Origin", "https://spotidown.app");
+            } else if (playUrl.startsWith("/")) {
+                File f = new File(playUrl);
+                if (f.exists() && f.canRead()) {
+                    FileInputStream fis = new FileInputStream(f);
+                    mediaPlayer.setDataSource(fis.getFD());
+                    fis.close();
                 } else {
-                    headers.put("Referer", "https://www.google.com/");
+                    mediaPlayer.setDataSource(playUrl);
                 }
-                mediaPlayer.setDataSource(this, Uri.parse(playUrl), headers);
             } else {
                 mediaPlayer.setDataSource(playUrl);
             }
@@ -680,21 +548,13 @@ public class MediaPlaybackService extends Service {
     }
 
     private void play() {
-        if (mediaPlayer == null) {
-            if (currentUrl != null && !currentUrl.isEmpty()) {
-                loadTrack(currentUrl, currentTitle, currentArtist, currentArtworkUrl);
-            }
-            return;
-        }
+        if (mediaPlayer == null) return;
         if (!isPrepared) {
             // Called before prepare finished — just remember intent.
             return;
         }
         if (!requestAudioFocus()) return;
         try {
-            if (mediaSession != null && !mediaSession.isActive()) {
-                mediaSession.setActive(true);
-            }
             mediaPlayer.start();
             isPlaying = true;
             updatePlaybackState(PlaybackStateCompat.STATE_PLAYING,
@@ -737,10 +597,6 @@ public class MediaPlaybackService extends Service {
 
     private void stopPlayback() {
         handler.removeCallbacks(positionTicker);
-        if (currentFileInputStream != null) {
-            try { currentFileInputStream.close(); } catch (Exception ignored) {}
-            currentFileInputStream = null;
-        }
         if (mediaPlayer != null) {
             try {
                 mediaPlayer.stop();
@@ -786,17 +642,26 @@ public class MediaPlaybackService extends Service {
     private Notification buildMediaNotification() {
         boolean playing = isPlaying;
 
-        PendingIntent playPausePi = buildServicePendingIntent(
-                playing ? ACTION_PAUSE : ACTION_PLAY, 101);
+        PendingIntent playPausePi = PendingIntent.getService(
+                this, 101,
+                new Intent(this, MediaPlaybackService.class)
+                        .setAction(playing ? ACTION_PAUSE : ACTION_PLAY),
+                pendingFlags());
 
-        PendingIntent stopPi = buildServicePendingIntent(
-                ACTION_STOP, 102);
+        PendingIntent stopPi = PendingIntent.getService(
+                this, 102,
+                new Intent(this, MediaPlaybackService.class).setAction(ACTION_STOP),
+                pendingFlags());
 
-        PendingIntent nextPi = buildServicePendingIntent(
-                ACTION_NEXT, 103);
+        PendingIntent nextPi = PendingIntent.getService(
+                this, 103,
+                new Intent(this, MediaPlaybackService.class).setAction(ACTION_NEXT),
+                pendingFlags());
 
-        PendingIntent prevPi = buildServicePendingIntent(
-                ACTION_PREV, 104);
+        PendingIntent prevPi = PendingIntent.getService(
+                this, 104,
+                new Intent(this, MediaPlaybackService.class).setAction(ACTION_PREV),
+                pendingFlags());
 
         PendingIntent contentPi = PendingIntent.getActivity(
                 this, 0,

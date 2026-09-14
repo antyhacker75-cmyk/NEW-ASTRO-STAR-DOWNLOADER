@@ -186,91 +186,57 @@ export async function scrapeYouTube(url) {
 
     if (_ytSource === "mobi") {
       const headers = {
-        Origin: "https://media.ytmp3.gg",
-        Referer: "https://media.ytmp3.gg/",
+        Origin: "https://ytmp3.mobi",
+        Referer: "https://ytmp3.mobi/",
         "User-Agent": CHROME_UA,
-        Accept: "application/json, text/plain, */*",
       };
-
-      const runServer2Convert = async (format, quality) => {
-        try {
-          const convRes = await scraperFetch(
-            {
-              url: "https://hub.convert1s.com/api/download",
-              method: "POST",
-              headers: { ...headers, "Content-Type": "application/json" },
-              data: JSON.stringify({
-                url,
-                os: "windows",
-                output: {
-                  type: format === "mp4" ? "video" : "audio",
-                  format,
-                  quality: quality || (format === "mp4" ? "720p" : "128k"),
-                },
-                audio: { bitrate: "128k" },
-              }),
-              rawResponse: true,
-            },
-            "Server 2 Convert",
+      const initData = await scraperFetch(
+        {
+          url: "https://a.ymcdn.org/api/v1/init?p=y&23=1llum1n471",
+          headers,
+        },
+        "ytmp3.mobi Init",
+      );
+      if (!initData || initData.error) throw new Error("Init failed");
+      const fetchSingle = async (format) => {
+        const convData = await scraperFetch(
+          {
+            url: `${initData.convertURL}&v=${videoId}&f=${format}`,
+            headers,
+          },
+          "ytmp3.mobi Convert",
+        );
+        if (!convData || convData.error) return null;
+        let progress = 0,
+          dlUrl = convData.downloadURL,
+          progUrl = convData.progressURL;
+        let attempts = 0;
+        while (progress < 3 && attempts < 15) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const progData = await scraperFetch(
+            { url: progUrl, headers },
+            "ytmp3.mobi Progress",
           );
-          currentStatus = convRes.status;
-          let conv = convRes.data;
-          if (typeof conv === "string") {
-            if (conv.trim().startsWith("<")) return null;
-            conv = JSON.parse(conv);
-          }
-          if (!conv || conv.error || !conv.statusUrl) return null;
-          let downloadUrl = null,
-            attempts = 0;
-          while (!downloadUrl && attempts < 25) {
-            await new Promise((r) => setTimeout(r, 1200));
-            const pollData = await scraperFetch(
-              {
-                url: conv.statusUrl,
-                headers,
-              },
-              "Server 2 Status",
-            );
-            attempts++;
-            if (
-              pollData &&
-              pollData.status === "completed" &&
-              pollData.downloadUrl
-            ) {
-              downloadUrl = pollData.downloadUrl;
-              break;
-            }
-            if (
-              pollData &&
-              (pollData.status === "error" || pollData.status === "failed")
-            )
-              break;
-          }
-          return downloadUrl
-            ? { url: downloadUrl, quality: conv.selectedQuality || quality }
-            : null;
-        } catch (e) {
-          return null;
+          if (!progData || progData.error) break;
+          progress = progData.progress;
+          if (progData.downloadURL) dlUrl = progData.downloadURL;
+          if (progress === 4) break;
+          attempts++;
         }
+        if (dlUrl && dlUrl.startsWith("//")) dlUrl = "https:" + dlUrl;
+        if (dlUrl && dlUrl.startsWith("/"))
+          dlUrl = "https://ytmp3.mobi" + dlUrl;
+        return dlUrl;
       };
-
-      const [videoRes, audioRes] = await Promise.all([
-        runServer2Convert("mp4", "720p"),
-        runServer2Convert("mp3", "128k"),
+      const [mp4Url, mp3Url] = await Promise.all([
+        fetchSingle("mp4"),
+        fetchSingle("mp3"),
       ]);
-
       const downloads = [];
-      if (videoRes && videoRes.url) {
-        downloads.push({ type: `MP4 ${videoRes.quality || "720p"}`, url: videoRes.url });
-      }
-      if (audioRes && audioRes.url) {
-        downloads.push({ type: "MP3", url: audioRes.url });
-      }
-
-      if (!downloads.length) {
-        throw new Error("Server 2 is currently busy. Please try Server 1.");
-      }
-
+      if (mp4Url) downloads.push({ type: "MP4", url: mp4Url });
+      if (mp3Url) downloads.push({ type: "MP3", url: mp3Url });
+      if (!downloads.length)
+        throw new Error("Failed to get download links. Try again.");
       _ytSource = null;
       return createScraperResult(true, { ...meta, downloads, sourceUrl: url });
     }

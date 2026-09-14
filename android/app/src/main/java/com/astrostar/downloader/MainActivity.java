@@ -99,8 +99,15 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
-        private void startPlaybackService(Intent intent) {
+        @JavascriptInterface
+        public void loadMedia(String url, String title, String artist, String artwork) {
             try {
+                Intent intent = new Intent(MainActivity.this, MediaPlaybackService.class);
+                intent.setAction(MediaPlaybackService.ACTION_LOAD);
+                intent.putExtra(MediaPlaybackService.EXTRA_URL, url);
+                intent.putExtra(MediaPlaybackService.EXTRA_TITLE, title);
+                intent.putExtra(MediaPlaybackService.EXTRA_ARTIST, artist);
+                intent.putExtra(MediaPlaybackService.EXTRA_ARTWORK, artwork);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForegroundService(intent);
                 } else {
@@ -112,26 +119,11 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void loadMedia(String url, String title, String artist, String artwork) {
-            try {
-                Intent intent = new Intent(MainActivity.this, MediaPlaybackService.class);
-                intent.setAction(MediaPlaybackService.ACTION_LOAD);
-                intent.putExtra(MediaPlaybackService.EXTRA_URL, url);
-                intent.putExtra(MediaPlaybackService.EXTRA_TITLE, title);
-                intent.putExtra(MediaPlaybackService.EXTRA_ARTIST, artist);
-                intent.putExtra(MediaPlaybackService.EXTRA_ARTWORK, artwork);
-                startPlaybackService(intent);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        @JavascriptInterface
         public void playMedia() {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PLAY);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -140,7 +132,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PAUSE);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -149,7 +141,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_STOP);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -157,21 +149,9 @@ public class MainActivity extends BridgeActivity {
         public void seekMedia(int positionMs) {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
-                i.setAction(MediaPlaybackService.ACTION_SEEK);
+                i.setAction(MediaPlaybackService.ACTION_PLAY);
                 i.putExtra("seek", positionMs);
-                startPlaybackService(i);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-
-        @JavascriptInterface
-        public void syncPlaybackState(boolean isPlaying, int positionMs, int durationMs) {
-            try {
-                Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
-                i.setAction(MediaPlaybackService.ACTION_SYNC_STATE);
-                i.putExtra(MediaPlaybackService.EXTRA_IS_PLAYING, isPlaying);
-                i.putExtra(MediaPlaybackService.EXTRA_POSITION, positionMs);
-                i.putExtra(MediaPlaybackService.EXTRA_DURATION, durationMs);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -180,7 +160,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_NEXT);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -189,7 +169,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PREV);
-                startPlaybackService(i);
+                startService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
