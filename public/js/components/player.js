@@ -85,10 +85,23 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   container.className = "astrostar-music-card";
   container.id = `musicPlayer_${index}_${Date.now()}`;
 
-  const title = dl.title || dl.filename || "Astro Star Track";
-  const artist = dl.author || dl.artist || dl.channel || "Astro Star Media";
+  let title = (dl.title || dl.filename || dl.name || "").trim();
+  if (!title && (dl.url || dl.rawPath || dl.rawUri)) {
+    const raw = dl.rawPath || dl.rawUri || dl.url || "";
+    const clean = raw.split("?")[0].split("#")[0];
+    const slashIdx = clean.lastIndexOf("/");
+    if (slashIdx !== -1) {
+      const part = decodeURIComponent(clean.substring(slashIdx + 1));
+      if (part) title = part.replace(/\.[^/.]+$/, "");
+    }
+  }
+  if (!title) title = "Music Track";
+
+  // Top is name of song, bottom is name of app
+  const appName = "AstroStar Downloader";
+  const artist = dl.author || dl.artist || dl.channel || appName;
   const artwork = dl.thumbnail || resultThumbnail || "";
-  const rawUrl = dl.url || dl.rawUri || dl.rawPath || "";
+  const rawUrl = dl.rawPath || dl.rawUri || dl.url || "";
   const platform = getPlatformInfo(dl, rawUrl);
 
   const isRealAudioOnly =
@@ -103,12 +116,12 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     rawUrl.toLowerCase().endsWith(".opus") ||
     rawUrl.toLowerCase().includes("/music/");
 
-  const canUseNativeService =
+  let canUseNativeService =
     isNativePlatform &&
     !!window.AstroStarMainBridge?.loadMedia &&
     isRealAudioOnly;
 
-  // Render UI layout (faithful to Screenshot 1 & Screenshot 2)
+  // Render UI layout (Title on top, App Name on bottom)
   container.innerHTML = `
     <div class="astrostar-music-header">
       <div class="astrostar-music-art-wrap">
@@ -317,6 +330,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     htmlAudio.loop = loopMode;
 
     let srcUrl = rawUrl;
+    if (window.Capacitor?.convertFileSrc && (srcUrl.startsWith("/") || srcUrl.startsWith("file://"))) {
+      srcUrl = window.Capacitor.convertFileSrc(srcUrl);
+    }
     if (srcUrl.startsWith("http://") && !srcUrl.includes("localhost")) {
       srcUrl = srcUrl.replace("http://", "https://");
     }
@@ -379,7 +395,10 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         window.AstroStarMainBridge.playMedia();
         updateUIState(true, durationSec, currentSec);
       } catch (err) {
-        console.warn("Native playMedia failed:", err);
+        console.warn("Native playMedia failed, falling back:", err);
+        canUseNativeService = false;
+        const a = initHtmlAudio();
+        a.play().catch(() => {});
       }
     } else {
       const a = initHtmlAudio();
@@ -428,6 +447,8 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       updateUIState(true, 0, 0);
     } catch (e) {
       console.warn("Failed to loadMedia via Native Bridge:", e);
+      canUseNativeService = false;
+      initHtmlAudio();
     }
 
     const syncNativeProgress = (posMs, durMs) => {
@@ -439,6 +460,15 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
     const syncNativeState = (state) => {
       if (!state) return;
+      if (state.isError) {
+        console.warn("Native media playback error, falling back to HTML5 audio...");
+        canUseNativeService = false;
+        const a = initHtmlAudio();
+        if (isPlaying) {
+          a.play().catch(e => console.warn("HTML5 audio fallback error:", e));
+        }
+        return;
+      }
       isPlaying = !!state.isPlaying;
       if (state.duration) durationSec = state.duration / 1000;
       updateUIState(isPlaying, durationSec, currentSec);
