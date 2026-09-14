@@ -51,6 +51,7 @@ clearAllBtn?.addEventListener("click", () => {
       }
 
       localStorage.removeItem("astrostar_history");
+      localStorage.removeItem("astrostar_favorites");
       setIsEditingHistory(false);
       setUIState({ isEditingHistory: false });
       renderHistory(onHistoryItemClick, onHistoryDeleteClick);
@@ -99,6 +100,20 @@ export async function onHistoryDeleteClick(url) {
 
       history.splice(index, 1);
       localStorage.setItem("astrostar_history", JSON.stringify(history));
+
+      // Also clean up favorites set if this URL or sourceUrl was favorited
+      try {
+        const rawFavs = localStorage.getItem("astrostar_favorites");
+        if (rawFavs) {
+          const favSet = new Set(JSON.parse(rawFavs));
+          if (favSet.has(url)) favSet.delete(url);
+          if (itemToDelete.sourceUrl && favSet.has(itemToDelete.sourceUrl)) {
+            favSet.delete(itemToDelete.sourceUrl);
+          }
+          localStorage.setItem("astrostar_favorites", JSON.stringify([...favSet]));
+        }
+      } catch (e) {}
+
       renderHistory(onHistoryItemClick, onHistoryDeleteClick);
     }
   );
@@ -207,12 +222,29 @@ export function saveToHistory(result, url) {
   const existingIndex = history.findIndex((h) => cleanUrl(h.url) === targetUrl);
   const existingItem = existingIndex !== -1 ? history[existingIndex] : null;
 
+  // Preserve favorite status if previously favorited
+  let isFav = false;
+  if (existingItem && (existingItem.favorite || existingItem.isFavorite)) {
+    isFav = true;
+  } else {
+    try {
+      const rawFavs = localStorage.getItem("astrostar_favorites");
+      if (rawFavs) {
+        const favSet = new Set(JSON.parse(rawFavs));
+        if (favSet.has(url) || (result.sourceUrl && favSet.has(result.sourceUrl))) {
+          isFav = true;
+        }
+      }
+    } catch (e) {}
+  }
+
   const newItem = {
     title: cleanTitle,
     thumbnail: result.thumbnail,
     url: url, // Keep the latest URL version
     sourceUrl: result.sourceUrl || url,
     timestamp: Date.now(),
+    favorite: isFav,
     downloads:
       result.downloads || (existingItem ? existingItem.downloads || [] : []),
     localFiles: existingItem ? existingItem.localFiles || [] : [],

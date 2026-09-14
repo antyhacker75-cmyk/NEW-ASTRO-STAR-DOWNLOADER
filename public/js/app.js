@@ -306,15 +306,20 @@ document.addEventListener(
   { passive: true },
 );
 
-// Initial Auto-Download Check
+// Initial Auto-Paste & Auto-Download Check on Launch
 setTimeout(() => {
-  const autoDownload = localStorage.getItem("astrostar_auto_download") === "true";
-  if (autoDownload) {
+  const autoPaste =
+    localStorage.getItem("astrostar_auto_paste") !== "false" &&
+    localStorage.getItem("mori_auto_paste") !== "false";
+  const autoDownload =
+    localStorage.getItem("astrostar_auto_download") === "true" ||
+    localStorage.getItem("mori_auto_download") === "true";
+  if (autoPaste || autoDownload) {
     if (typeof handlePasteFromClipboard === "function") {
       handlePasteFromClipboard(true);
     }
   }
-}, 2000);
+}, 1500);
 
 // Hardware Back Button Handler for Mobile
 let lastBackPressTime = 0;

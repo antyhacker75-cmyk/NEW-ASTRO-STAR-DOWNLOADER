@@ -14,6 +14,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -26,7 +27,10 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
+import androidx.media.session.MediaButtonReceiver;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -97,8 +101,12 @@ public class MediaPlaybackService extends Service {
         if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
             act.runOnUiThread(() -> {
                 try {
-                    String fn = isNext ? "window.astroStarMediaNextTrack" : "window.astroStarMediaPrevTrack";
-                    act.getBridge().getWebView().evaluateJavascript("if (typeof " + fn + " === 'function') " + fn + "();", null);
+                    String fn1 = isNext ? "window.astroStarMediaNextTrack" : "window.astroStarMediaPrevTrack";
+                    String fn2 = isNext ? "window.moriMediaNextTrack" : "window.moriMediaPrevTrack";
+                    act.getBridge().getWebView().evaluateJavascript(
+                        "(function(){ if (typeof " + fn1 + " === 'function') { " + fn1 + "(); } else if (typeof " + fn2 + " === 'function') { " + fn2 + "(); } })();",
+                        null
+                    );
                 } catch (Exception ignored) {}
             });
         }
@@ -110,7 +118,7 @@ public class MediaPlaybackService extends Service {
             act.runOnUiThread(() -> {
                 try {
                     act.getBridge().getWebView().evaluateJavascript(
-                        "if (typeof window.astroStarMediaProgress === 'function') window.astroStarMediaProgress(" + posMs + ", " + durMs + ");",
+                        "(function(){ if (typeof window.astroStarMediaProgress === 'function') window.astroStarMediaProgress(" + posMs + ", " + durMs + "); if (typeof window.moriMediaProgress === 'function') window.moriMediaProgress(" + posMs + ", " + durMs + "); })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -119,12 +127,16 @@ public class MediaPlaybackService extends Service {
     }
 
     private void sendStateToWebView(boolean playing, long durMs) {
+        sendStateToWebView(playing, durMs, false);
+    }
+
+    private void sendStateToWebView(boolean playing, long durMs, boolean isError) {
         MainActivity act = MainActivity.getInstance();
         if (act != null && act.getBridge() != null && act.getBridge().getWebView() != null) {
             act.runOnUiThread(() -> {
                 try {
                     act.getBridge().getWebView().evaluateJavascript(
-                        "if (typeof window.astroStarMediaState === 'function') window.astroStarMediaState({ isPlaying: " + playing + ", duration: " + durMs + " });",
+                        "(function(){ var s = { isPlaying: " + playing + ", duration: " + durMs + ", isError: " + isError + " }; if (typeof window.astroStarMediaState === 'function') window.astroStarMediaState(s); if (typeof window.moriMediaState === 'function') window.moriMediaState(s); })();",
                         null
                     );
                 } catch (Exception ignored) {}
@@ -164,6 +176,13 @@ public class MediaPlaybackService extends Service {
             if (intent == null) return START_NOT_STICKY;
             String action = intent.getAction();
             if (action == null) return START_NOT_STICKY;
+
+            if (Intent.ACTION_MEDIA_BUTTON.equals(action)) {
+                if (mediaSession != null) {
+                    MediaButtonReceiver.handleIntent(mediaSession, intent);
+                }
+                return START_NOT_STICKY;
+            }
 
             switch (action) {
                 case ACTION_LOAD: {
@@ -232,6 +251,10 @@ public class MediaPlaybackService extends Service {
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
                 MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
 
+        Intent mbrIntent = new Intent(Intent.ACTION_MEDIA_BUTTON, null, this, MediaButtonReceiver.class);
+        PendingIntent mbrPendingIntent = PendingIntent.getBroadcast(this, 0, mbrIntent, pendingFlags());
+        mediaSession.setMediaButtonReceiver(mbrPendingIntent);
+
         mediaSession.setCallback(new MediaSessionCompat.Callback() {
             @Override public void onPlay()             { play(); }
             @Override public void onPause()            { pause(); }
@@ -239,6 +262,26 @@ public class MediaPlaybackService extends Service {
             @Override public void onSkipToNext()       { notifyWebViewTrackChange(true); }
             @Override public void onSkipToPrevious()   { notifyWebViewTrackChange(false); }
             @Override public void onSeekTo(long pos)   { seekTo((int) pos); }
+
+            @Override
+            public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                if (mediaButtonEvent != null && Intent.ACTION_MEDIA_BUTTON.equals(mediaButtonEvent.getAction())) {
+                    android.view.KeyEvent ke = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                    if (ke != null && ke.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                        int code = ke.getKeyCode();
+                        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY) { play(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) { pause(); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_HEADSETHOOK) {
+                            if (isPlaying) pause(); else play();
+                            return true;
+                        }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) { notifyWebViewTrackChange(true); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) { notifyWebViewTrackChange(false); return true; }
+                        else if (code == android.view.KeyEvent.KEYCODE_MEDIA_STOP) { stopPlayback(); stopSelf(); return true; }
+                    }
+                }
+                return super.onMediaButtonEvent(mediaButtonEvent);
+            }
         });
 
         // Initial state so the system knows the app can play media
@@ -264,7 +307,8 @@ public class MediaPlaybackService extends Service {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentArtist)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "AstroStar Downloader")
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "AstroStar Downloader")
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs);
 
         if (currentArtwork != null) {
@@ -364,14 +408,32 @@ public class MediaPlaybackService extends Service {
     // ============================================================
 
     private void loadTrack(String url, String title, String artist, String artwork) {
-        if (url == null || url.isEmpty()) {
+        if (url == null || url.trim().isEmpty()) {
             Log.w(TAG, "loadTrack: empty url");
             return;
         }
 
-        currentUrl        = url;
-        currentTitle      = (title   != null && !title.isEmpty())   ? title   : "Astro Star";
-        currentArtist     = (artist  != null && !artist.isEmpty())  ? artist  : "Unknown";
+        currentUrl        = url.trim();
+        
+        // Clean title
+        String cleanTitle = (title != null && !title.trim().isEmpty()) ? title.trim() : "";
+        if (cleanTitle.isEmpty()) {
+            // Attempt to derive title from file path
+            try {
+                String pathOnly = currentUrl.split("\\?")[0].split("#")[0];
+                int lastSlash = pathOnly.lastIndexOf('/');
+                if (lastSlash != -1 && lastSlash < pathOnly.length() - 1) {
+                    cleanTitle = pathOnly.substring(lastSlash + 1);
+                    int dotIdx = cleanTitle.lastIndexOf('.');
+                    if (dotIdx > 0) cleanTitle = cleanTitle.substring(0, dotIdx);
+                    cleanTitle = Uri.decode(cleanTitle);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (cleanTitle.isEmpty()) cleanTitle = "Music Track";
+
+        currentTitle      = cleanTitle;
+        currentArtist     = (artist != null && !artist.trim().isEmpty()) ? artist.trim() : "AstroStar Downloader";
         currentArtworkUrl = artwork;
         currentArtwork    = null;
         durationMs        = 0;
@@ -412,10 +474,34 @@ public class MediaPlaybackService extends Service {
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build());
 
-            if (url.startsWith("content://") || url.startsWith("file://")) {
-                mediaPlayer.setDataSource(this, Uri.parse(url));
+            String playUrl = currentUrl;
+            if (playUrl.contains("_capacitor_file_")) {
+                playUrl = playUrl.substring(playUrl.indexOf("_capacitor_file_") + 16);
+                if (!playUrl.startsWith("/")) {
+                    playUrl = "/" + playUrl;
+                }
+            }
+
+            if (playUrl.startsWith("content://")) {
+                mediaPlayer.setDataSource(this, Uri.parse(playUrl));
+            } else if (playUrl.startsWith("file://")) {
+                Uri parsedUri = Uri.parse(playUrl);
+                String filePath = parsedUri.getPath();
+                File f = new File(filePath != null ? filePath : playUrl.substring(7));
+                if (f.exists() && f.canRead()) {
+                    mediaPlayer.setDataSource(f.getAbsolutePath());
+                } else {
+                    mediaPlayer.setDataSource(this, parsedUri);
+                }
+            } else if (playUrl.startsWith("/")) {
+                File f = new File(playUrl);
+                if (f.exists() && f.canRead()) {
+                    mediaPlayer.setDataSource(f.getAbsolutePath());
+                } else {
+                    mediaPlayer.setDataSource(playUrl);
+                }
             } else {
-                mediaPlayer.setDataSource(url);
+                mediaPlayer.setDataSource(playUrl);
             }
 
             mediaPlayer.setOnPreparedListener(mp -> {
@@ -423,14 +509,14 @@ public class MediaPlaybackService extends Service {
                 durationMs = mp.getDuration();
                 updateMetadata();   // now with duration → seekbar shows up
                 play();
-                sendStateToWebView(true, durationMs);
+                sendStateToWebView(true, durationMs, false);
             });
 
             mediaPlayer.setOnCompletionListener(mp -> {
                 isPlaying = false;
                 handler.removeCallbacks(positionTicker);
                 updatePlaybackState(PlaybackStateCompat.STATE_STOPPED, durationMs);
-                sendStateToWebView(false, durationMs);
+                sendStateToWebView(false, durationMs, false);
                 pushNotification();
                 notifyWebViewTrackChange(true);
             });
@@ -440,7 +526,7 @@ public class MediaPlaybackService extends Service {
                 isPlaying  = false;
                 isPrepared = false;
                 updatePlaybackState(PlaybackStateCompat.STATE_ERROR);
-                sendStateToWebView(false, durationMs);
+                sendStateToWebView(false, durationMs, true);
                 pushNotification();
                 return true;
             });
@@ -449,8 +535,10 @@ public class MediaPlaybackService extends Service {
 
         } catch (Exception e) {
             Log.e(TAG, "loadTrack failed", e);
+            isPlaying  = false;
+            isPrepared = false;
             updatePlaybackState(PlaybackStateCompat.STATE_ERROR);
-            sendStateToWebView(false, durationMs);
+            sendStateToWebView(false, durationMs, true);
             pushNotification();
         }
     }
@@ -582,6 +670,7 @@ public class MediaPlaybackService extends Service {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(currentTitle)
                 .setContentText(currentArtist)
+                .setSubText("AstroStar Downloader")
                 .setContentIntent(contentPi)
                 .setDeleteIntent(stopPi)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -646,20 +735,29 @@ public class MediaPlaybackService extends Service {
     // ============================================================
 
     private Bitmap downloadBitmap(String urlStr) {
-        if (urlStr == null || urlStr.isEmpty()) return null;
+        if (urlStr == null || urlStr.trim().isEmpty()) return null;
+        String cleanUrl = urlStr.trim();
+        if (cleanUrl.contains("_capacitor_file_")) {
+            cleanUrl = cleanUrl.substring(cleanUrl.indexOf("_capacitor_file_") + 16);
+            if (!cleanUrl.startsWith("/")) {
+                cleanUrl = "/" + cleanUrl;
+            }
+        }
         HttpURLConnection conn = null;
         InputStream in = null;
         try {
             Bitmap bmp = null;
-            if (urlStr.startsWith("content://")) {
-                in = getContentResolver().openInputStream(Uri.parse(urlStr));
+            if (cleanUrl.startsWith("content://")) {
+                in = getContentResolver().openInputStream(Uri.parse(cleanUrl));
                 bmp = BitmapFactory.decodeStream(in);
-            } else if (urlStr.startsWith("file://")) {
-                bmp = BitmapFactory.decodeFile(Uri.parse(urlStr).getPath());
-            } else if (urlStr.startsWith("/")) {
-                bmp = BitmapFactory.decodeFile(urlStr);
+            } else if (cleanUrl.startsWith("file://")) {
+                Uri parsed = Uri.parse(cleanUrl);
+                String p = parsed.getPath();
+                bmp = BitmapFactory.decodeFile(p != null ? p : cleanUrl.substring(7));
+            } else if (cleanUrl.startsWith("/")) {
+                bmp = BitmapFactory.decodeFile(cleanUrl);
             } else {
-                URL url = new URL(urlStr);
+                URL url = new URL(cleanUrl);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(8000);
                 conn.setReadTimeout(8000);

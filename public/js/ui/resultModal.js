@@ -179,6 +179,9 @@ export async function showModal(item, onRedownload) {
               rawPath: file.path,
               rawUri: file.uri,
               type: mediaType,
+              title: file.name || file.filename || item.title || "",
+              author: item.author || item.artist || "",
+              artist: item.author || item.artist || "AstroStar Downloader",
               thumbnail: file.thumbnail || item.thumbnail,
               isLocal: true,
             });
@@ -196,6 +199,9 @@ export async function showModal(item, onRedownload) {
           rawPath: item.localUri,
           rawUri: item.localUri,
           type: mediaType,
+          title: item.title || "",
+          author: item.author || item.artist || "",
+          artist: item.author || item.artist || "AstroStar Downloader",
           thumbnail: item.localThumbnail || item.thumbnail,
           isLocal: true,
         });
@@ -213,7 +219,11 @@ export async function showModal(item, onRedownload) {
             displayItems.push({
               url: localUrl,
               remoteUrl: dl.url || dl.src,
+              rawPath: dl.localUrl || dl.localSrc,
               type: mediaType,
+              title: dl.title || item.title || "",
+              author: dl.author || dl.artist || item.author || item.artist || "",
+              artist: dl.author || dl.artist || item.author || item.artist || "AstroStar Downloader",
               thumbnail: dl.thumbnail || item.thumbnail,
               isLocal: true,
             });

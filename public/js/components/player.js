@@ -85,10 +85,23 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   container.className = "astrostar-music-card";
   container.id = `musicPlayer_${index}_${Date.now()}`;
 
-  const title = dl.title || dl.filename || "Astro Star Track";
-  const artist = dl.author || dl.artist || dl.channel || "Astro Star Media";
+  let title = (dl.title || dl.filename || dl.name || "").trim();
+  if (!title && (dl.url || dl.rawPath || dl.rawUri)) {
+    const raw = dl.rawPath || dl.rawUri || dl.url || "";
+    const clean = raw.split("?")[0].split("#")[0];
+    const slashIdx = clean.lastIndexOf("/");
+    if (slashIdx !== -1) {
+      const part = decodeURIComponent(clean.substring(slashIdx + 1));
+      if (part) title = part.replace(/\.[^/.]+$/, "");
+    }
+  }
+  if (!title) title = "Music Track";
+
+  // Top is name of song, bottom is name of app
+  const appName = "AstroStar Downloader";
+  const artist = dl.author || dl.artist || dl.channel || appName;
   const artwork = dl.thumbnail || resultThumbnail || "";
-  const rawUrl = dl.url || dl.rawUri || dl.rawPath || "";
+  const rawUrl = dl.rawPath || dl.rawUri || dl.url || "";
   const platform = getPlatformInfo(dl, rawUrl);
 
   const isRealAudioOnly =
@@ -103,12 +116,12 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     rawUrl.toLowerCase().endsWith(".opus") ||
     rawUrl.toLowerCase().includes("/music/");
 
-  const canUseNativeService =
+  let canUseNativeService =
     isNativePlatform &&
     !!window.AstroStarMainBridge?.loadMedia &&
     isRealAudioOnly;
 
-  // Render UI layout (faithful to Screenshot 1 & Screenshot 2)
+  // Render UI layout (Title on top, App Name on bottom)
   container.innerHTML = `
     <div class="astrostar-music-header">
       <div class="astrostar-music-art-wrap">
@@ -253,25 +266,29 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
   // Next / Previous slide actions
   const triggerNext = () => {
-    const nextSlideBtn = document.getElementById("slideNextBtn");
-    if (nextSlideBtn && !nextSlideBtn.disabled) {
-      nextSlideBtn.click();
-    } else if (canUseNativeService && window.AstroStarMainBridge?.nextMedia) {
-      window.AstroStarMainBridge.nextMedia();
+    const modalNextBtn = document.getElementById("modalSlideNextBtn");
+    const mainNextBtn = document.getElementById("slideNextBtn");
+    if (modalNextBtn && !modalNextBtn.disabled && modalNextBtn.offsetParent !== null) {
+      modalNextBtn.click();
+    } else if (mainNextBtn && !mainNextBtn.disabled && mainNextBtn.offsetParent !== null) {
+      mainNextBtn.click();
     } else {
-      // If single item, loop to start
+      // If single item or at end, seek to start
       handleSeek(0);
     }
   };
 
   const triggerPrev = () => {
-    const prevSlideBtn = document.getElementById("slidePrevBtn");
     if (currentSec > 3) {
       handleSeek(0);
-    } else if (prevSlideBtn && !prevSlideBtn.disabled) {
-      prevSlideBtn.click();
-    } else if (canUseNativeService && window.AstroStarMainBridge?.prevMedia) {
-      window.AstroStarMainBridge.prevMedia();
+      return;
+    }
+    const modalPrevBtn = document.getElementById("modalSlidePrevBtn");
+    const mainPrevBtn = document.getElementById("slidePrevBtn");
+    if (modalPrevBtn && !modalPrevBtn.disabled && modalPrevBtn.offsetParent !== null) {
+      modalPrevBtn.click();
+    } else if (mainPrevBtn && !mainPrevBtn.disabled && mainPrevBtn.offsetParent !== null) {
+      mainPrevBtn.click();
     } else {
       handleSeek(0);
     }
@@ -280,6 +297,20 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   // Hook global bridge callbacks for Android native service
   window.astroStarMediaNextTrack = triggerNext;
   window.astroStarMediaPrevTrack = triggerPrev;
+
+  // Setup audio URL for both webview/browser and native playback
+  let audioUrl = dl.url || dl.rawPath || dl.rawUri || "";
+  const rawNativeUrl = dl.rawPath || dl.rawUri || dl.url || "";
+
+  if (
+    window.Capacitor?.convertFileSrc &&
+    (audioUrl.startsWith("/") || audioUrl.startsWith("file://"))
+  ) {
+    audioUrl = window.Capacitor.convertFileSrc(audioUrl);
+  }
+  if (audioUrl.startsWith("http://") && !audioUrl.includes("localhost")) {
+    audioUrl = audioUrl.replace("http://", "https://");
+  }
 
   // Web Media Session API setup for mobile lock screen & control center
   const syncMediaSession = () => {
@@ -302,71 +333,65 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     });
   };
 
-  // Setup HTML5 Audio element for Web / Chrome / PWA / fallback
-  let htmlAudio = null;
+  // Setup HTML5 Audio element embedded in the container
+  const htmlAudio = document.createElement("audio");
+  htmlAudio.className = "astrostar-music-audio-engine";
+  htmlAudio.style.display = "none";
+  htmlAudio.preload = "auto";
+  htmlAudio.crossOrigin = "anonymous";
+  htmlAudio.setAttribute("playsinline", "true");
+  htmlAudio.setAttribute("webkit-playsinline", "true");
+  htmlAudio.setAttribute("referrerpolicy", "no-referrer");
+  htmlAudio.loop = loopMode;
+  htmlAudio.src = audioUrl;
+  container.appendChild(htmlAudio);
 
-  const initHtmlAudio = () => {
-    if (htmlAudio) return htmlAudio;
-    htmlAudio = new Audio();
-    htmlAudio.preload = "auto";
-    htmlAudio.crossOrigin = "anonymous";
-    htmlAudio.loop = loopMode;
+  htmlAudio.addEventListener("loadedmetadata", () => {
+    durationSec = htmlAudio.duration || 0;
+    updateUIState(isPlaying, durationSec, htmlAudio.currentTime);
+    syncMediaSession();
+    updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
+  });
 
-    let srcUrl = rawUrl;
-    if (srcUrl.startsWith("http://") && !srcUrl.includes("localhost")) {
-      srcUrl = srcUrl.replace("http://", "https://");
+  htmlAudio.addEventListener("timeupdate", () => {
+    if (!isDragging) {
+      currentSec = htmlAudio.currentTime;
+      updateUIState(isPlaying, htmlAudio.duration || durationSec, currentSec);
+      updateMediaSessionPositionState(durationSec, currentSec);
     }
-    htmlAudio.src = srcUrl;
+  });
 
-    htmlAudio.addEventListener("loadedmetadata", () => {
-      durationSec = htmlAudio.duration || 0;
-      updateUIState(isPlaying, durationSec, htmlAudio.currentTime);
-      syncMediaSession();
-      updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
-    });
+  htmlAudio.addEventListener("play", () => {
+    updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "playing";
+    }
+  });
 
-    htmlAudio.addEventListener("timeupdate", () => {
-      if (!isDragging) {
-        currentSec = htmlAudio.currentTime;
-        updateUIState(isPlaying, htmlAudio.duration || durationSec, currentSec);
-        updateMediaSessionPositionState(durationSec, currentSec);
+  htmlAudio.addEventListener("pause", () => {
+    updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "paused";
+    }
+  });
+
+  htmlAudio.addEventListener("ended", () => {
+    if (!loopMode) {
+      triggerNext();
+    }
+  });
+
+  htmlAudio.addEventListener("error", (e) => {
+    console.warn("Audio error, attempting proxy streaming...", e);
+    if (audioUrl && audioUrl.startsWith("http") && !htmlAudio._proxyTried) {
+      htmlAudio._proxyTried = true;
+      htmlAudio.src = `/api/proxy?url=${encodeURIComponent(audioUrl)}`;
+      htmlAudio.load();
+      if (isPlaying) {
+        htmlAudio.play().catch(() => {});
       }
-    });
-
-    htmlAudio.addEventListener("play", () => {
-      updateUIState(true, durationSec, htmlAudio.currentTime);
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "playing";
-      }
-    });
-
-    htmlAudio.addEventListener("pause", () => {
-      updateUIState(false, durationSec, htmlAudio.currentTime);
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
-    });
-
-    htmlAudio.addEventListener("ended", () => {
-      if (!loopMode) {
-        triggerNext();
-      }
-    });
-
-    htmlAudio.addEventListener("error", (e) => {
-      console.warn("Audio error, attempting proxy streaming...", e);
-      if (rawUrl && rawUrl.startsWith("http") && !htmlAudio._proxyTried) {
-        htmlAudio._proxyTried = true;
-        htmlAudio.src = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
-        htmlAudio.load();
-        if (isPlaying) {
-          htmlAudio.play().catch(() => {});
-        }
-      }
-    });
-
-    return htmlAudio;
-  };
+    }
+  });
 
   // Play & Pause Handlers
   const handlePlay = () => {
@@ -375,12 +400,12 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
         window.AstroStarMainBridge.playMedia();
         updateUIState(true, durationSec, currentSec);
       } catch (err) {
-        console.warn("Native playMedia failed:", err);
+        canUseNativeService = false;
+        htmlAudio.play().catch((e) => console.warn("HTML5 audio play error:", e));
       }
     } else {
-      const a = initHtmlAudio();
-      a.play().then(() => {
-        updateUIState(true, a.duration || durationSec, a.currentTime);
+      htmlAudio.play().then(() => {
+        updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
         syncMediaSession();
       }).catch((err) => {
         console.warn("HTML5 audio play error:", err);
@@ -396,10 +421,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       } catch (err) {
         console.warn("Native pauseMedia failed:", err);
       }
-    } else if (htmlAudio) {
-      htmlAudio.pause();
-      updateUIState(false, durationSec, htmlAudio.currentTime);
     }
+    htmlAudio.pause();
+    updateUIState(false, durationSec, htmlAudio.currentTime);
   };
 
   const handleSeek = (sec) => {
@@ -409,9 +433,8 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
       try {
         window.AstroStarMainBridge.seekMedia(Math.round(targetSec * 1000));
       } catch (_) {}
-    } else if (htmlAudio) {
-      htmlAudio.currentTime = targetSec;
     }
+    htmlAudio.currentTime = targetSec;
     updateUIState(isPlaying, durationSec, targetSec);
     updateMediaSessionPositionState(durationSec, targetSec);
   };
@@ -419,26 +442,44 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   // Connect native bridge callbacks
   if (canUseNativeService) {
     try {
-      window.AstroStarMainBridge.loadMedia(rawUrl, title, artist, artwork);
+      window.AstroStarMainBridge.loadMedia(rawNativeUrl, title, artist, artwork);
       isPlaying = true;
       updateUIState(true, 0, 0);
     } catch (e) {
       console.warn("Failed to loadMedia via Native Bridge:", e);
+      canUseNativeService = false;
     }
 
-    window.astroStarMediaProgress = (posMs, durMs) => {
+    const syncNativeProgress = (posMs, durMs) => {
       durationSec = durMs / 1000;
       currentSec = posMs / 1000;
       updateUIState(isPlaying, durationSec, currentSec);
       updateMediaSessionPositionState(durationSec, currentSec);
     };
 
-    window.astroStarMediaState = (state) => {
+    const syncNativeState = (state) => {
       if (!state) return;
+      if (state.isError) {
+        console.warn("Native media playback error, falling back to HTML5 audio...");
+        canUseNativeService = false;
+        if (isPlaying) {
+          htmlAudio.play().catch((e) => console.warn("HTML5 audio fallback error:", e));
+        }
+        return;
+      }
       isPlaying = !!state.isPlaying;
       if (state.duration) durationSec = state.duration / 1000;
       updateUIState(isPlaying, durationSec, currentSec);
     };
+
+    window.astroStarMediaProgress = syncNativeProgress;
+    window.moriMediaProgress = syncNativeProgress;
+    window.astroStarMediaState = syncNativeState;
+    window.moriMediaState = syncNativeState;
+    window.astroStarMediaNextTrack = triggerNext;
+    window.moriMediaNextTrack = triggerNext;
+    window.astroStarMediaPrevTrack = triggerPrev;
+    window.moriMediaPrevTrack = triggerPrev;
   } else {
     // Web / Chrome / PWA mode
     syncMediaSession();
@@ -753,8 +794,26 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
 
   fsBtn.onclick = (e) => {
     e.stopPropagation();
-    if (video.requestFullscreen) video.requestFullscreen();
-    else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+    const bridge = window.AstroStarMainBridge || window.MoriMainBridge;
+    if (bridge && typeof bridge.toggleOrientation === "function") {
+      bridge.toggleOrientation();
+    }
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    } else {
+      if (video.requestFullscreen) {
+        video.requestFullscreen().catch(() => {
+          if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+          else if (playerContainer.requestFullscreen) playerContainer.requestFullscreen().catch(() => {});
+        });
+      } else if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else if (playerContainer.requestFullscreen) {
+        playerContainer.requestFullscreen().catch(() => {});
+      }
+    }
   };
 
   const seekToPos = (clientX) => {

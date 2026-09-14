@@ -143,6 +143,37 @@
               <span class="stats-val" id="historyDlStatsVal">0</span>
             </div>
           </div>
+          <!-- History Search & Filter Tabs -->
+          <div id="historyControls" class="history-controls">
+            <div class="history-search-wrapper">
+              <svg class="history-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+              <input
+                type="text"
+                id="historySearchInput"
+                class="history-search-input"
+                placeholder="Search history..."
+                data-i18n-placeholder="placeholder-search-history"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button id="historySearchClear" class="history-search-clear hidden" aria-label="Clear search">×</button>
+            </div>
+            <div class="history-filter-tabs" role="tablist">
+              <button class="history-filter-tab active" data-tab="all" id="historyTabAll" role="tab" aria-selected="true">
+                <span data-i18n="filter-all">All</span>
+                <span class="history-tab-badge" id="historyAllCount">0</span>
+              </button>
+              <button class="history-filter-tab" data-tab="favorites" id="historyTabFavorites" role="tab" aria-selected="false">
+                <svg class="history-tab-star" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                </svg>
+                <span data-i18n="filter-favorites">Favorites</span>
+                <span class="history-tab-badge" id="historyFavCount">0</span>
+              </button>
+            </div>
+          </div>
           <div class="empty-state"><p>No history yet.</p></div>
         </div>
 
