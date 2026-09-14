@@ -15,6 +15,154 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Update check endpoint with cache and semver-aware release selection
+function compareSemver(v1, v2) {
+  const p1 = (v1 || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const p2 = (v2 || '').replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+    const num1 = p1[i] || 0;
+    const num2 = p2[i] || 0;
+    if (num1 > num2) return 1;
+    if (num1 < num2) return -1;
+  }
+  return 0;
+}
+
+const assetUrlMap = new Map();
+
+// Download asset proxy to protect repository URL
+async function handleAssetDownload(req, res) {
+  const assetId = req.params.assetId;
+  const downloadUrl = assetUrlMap.get(String(assetId));
+  if (!downloadUrl) {
+    return res.status(404).send('Asset not found or expired');
+  }
+
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: downloadUrl,
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'AstroStar-App',
+      },
+    });
+
+    const filename = req.params.filename || 'update-package';
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    if (response.headers['content-type']) {
+      res.setHeader('Content-Type', response.headers['content-type']);
+    }
+    if (response.headers['content-length']) {
+      res.setHeader('Content-Length', response.headers['content-length']);
+    }
+    response.data.pipe(res);
+  } catch (err) {
+    console.error('Download asset proxy error:', err?.message);
+    res.status(500).send('Failed to download asset');
+  }
+}
+
+app.get('/api/download-asset/:assetId', handleAssetDownload);
+app.get('/api/download-asset/:assetId/:filename', handleAssetDownload);
+
+let updateCache = { timestamp: 0, data: null };
+app.get('/api/check-update', async (req, res) => {
+  const now = Date.now();
+  if (updateCache.data && (now - updateCache.timestamp < 30000)) {
+    return res.json(updateCache.data);
+  }
+
+  const repo = req.query.repo || 'antyhacker75-cmyk/NEW-ASTRO-STAR-DOWNLOADER';
+  const url = `https://api.github.com/repos/${repo}/releases`;
+
+  try {
+    const response = await axios({
+      method: 'GET',
+      url,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'AstroStar-App',
+      },
+      timeout: 10000,
+      validateStatus: () => true,
+    });
+
+    if (response.status === 200 && Array.isArray(response.data) && response.data.length > 0) {
+      const validReleases = response.data.filter((r) => r && !r.draft && r.tag_name);
+      validReleases.sort((a, b) => compareSemver(b.tag_name, a.tag_name));
+      const highest = validReleases[0] || response.data[0];
+
+      // Map assets to protect repository URL
+      response.data.forEach((r) => {
+        if (Array.isArray(r.assets)) {
+          r.assets.forEach((a) => {
+            if (a && a.id && a.browser_download_url) {
+              assetUrlMap.set(String(a.id), a.browser_download_url);
+            }
+          });
+        }
+      });
+
+      const sanitizedAssets = Array.isArray(highest.assets)
+        ? highest.assets.map((a) => {
+            if (a && a.id && a.browser_download_url) {
+              assetUrlMap.set(String(a.id), a.browser_download_url);
+            }
+            return {
+              id: a.id,
+              name: a.name,
+              size: a.size,
+              download_url: `/api/download-asset/${a.id}/${encodeURIComponent(a.name || 'app')}`,
+            };
+          })
+        : [];
+
+      const sanitizedRelease = {
+        tag_name: highest.tag_name,
+        name: highest.name,
+        published_at: highest.published_at,
+        assets: sanitizedAssets,
+      };
+
+      updateCache = { timestamp: now, data: { status: 200, success: true, release: sanitizedRelease } };
+      return res.json(updateCache.data);
+    }
+
+    if (response.status === 200 && response.data && !Array.isArray(response.data)) {
+      const single = response.data;
+      const sanitizedAssets = Array.isArray(single.assets)
+        ? single.assets.map((a) => {
+            if (a && a.id && a.browser_download_url) {
+              assetUrlMap.set(String(a.id), a.browser_download_url);
+            }
+            return {
+              id: a.id,
+              name: a.name,
+              size: a.size,
+              download_url: `/api/download-asset/${a.id}/${encodeURIComponent(a.name || 'app')}`,
+            };
+          })
+        : [];
+
+      const sanitizedRelease = {
+        tag_name: single.tag_name,
+        name: single.name,
+        published_at: single.published_at,
+        assets: sanitizedAssets,
+      };
+
+      updateCache = { timestamp: now, data: { status: 200, success: true, release: sanitizedRelease } };
+      return res.json(updateCache.data);
+    }
+
+    updateCache = { timestamp: now, data: { status: response.status, success: true, release: null, message: 'No releases found' } };
+    return res.json(updateCache.data);
+  } catch (err) {
+    return res.json({ status: 200, success: true, release: null, message: 'Offline or unable to check releases' });
+  }
+});
+
 // GET proxy for audio/video media streaming with Range header support
 app.get('/api/proxy', async (req, res) => {
   const { url } = req.query;
