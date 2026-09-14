@@ -700,55 +700,54 @@ input[type="text"]::placeholder {
 }
 
 /* ----------------------------------------------------------------
-   Primary action buttons — refined, natural iOS/Android glass
-   NOTE: Strictly targets actual action buttons. Never targets
-   media player controls or generic container buttons.
+   Primary modal buttons — iOS 26 tinted glass
+   NOTE: This selector must NOT catch .slide-btn. That's why we
+   exclude the slider buttons explicitly.
    ---------------------------------------------------------------- */
 
-#redownloadBtn,
+.modal-content button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
+.info-modal button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
+.confirm-modal button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
+#modalContent button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
+#infoModal button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
+.media-card button:not(.close-card):not(.slide-btn),
 .redownload-btn,
 .re-download-btn,
 .download-again-btn,
 .modal-redownload-btn,
-.modal-action-btn,
+.action-btn,
 .primary-action-btn,
 .modal-btn,
-.action-btn,
-.confirm-actions .ok-btn,
-.batch-modal-actions .primary-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  width: 100%;
-  max-width: 100%;
-  height: 44px !important;
-  min-height: 44px !important;
-  padding: 0 20px !important;
-  border-radius: 12px !important;
-  background: rgba(var(--primary-rgb), 0.12) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  border: 1px solid rgba(var(--primary-rgb), 0.25) !important;
+.modal-action-btn {
+  background: rgba(var(--primary-rgb), 0.14) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
+  backdrop-filter: blur(30px) saturate(200%) !important;
+  border: 0.5px solid rgba(var(--primary-rgb), 0.28) !important;
+  border-radius: 16px !important;
   color: var(--primary) !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.2px !important;
-  text-transform: none !important;
-  font-size: 0.88rem !important;
-  line-height: 1 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.4px !important;
+  text-transform: uppercase !important;
+  font-size: 0.9rem !important;
+  padding: 16px !important;
+  width: 100%;
   overflow: hidden;
+  isolation: isolate;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.45) inset,
-    0 2px 8px rgba(var(--primary-rgb), 0.08) !important;
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 -1px 0 rgba(255, 255, 255, 0.10) inset,
+    0 6px 20px rgba(var(--primary-rgb), 0.14),
+    0 2px 6px rgba(var(--primary-rgb), 0.08) !important;
   transition: background 0.18s cubic-bezier(0.32, 0.72, 0, 1),
-              border-color 0.18s cubic-bezier(0.32, 0.72, 0, 1),
-              box-shadow 0.18s cubic-bezier(0.32, 0.72, 0, 1),
-              transform 0.12s ease !important;
+              box-shadow 0.18s cubic-bezier(0.32, 0.72, 0, 1) !important;
   transform: none !important;
   cursor: pointer;
 }
 
-#redownloadBtn::before,
+.modal-content button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn)::before,
+.info-modal button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn)::before,
+#modalContent button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn)::before,
+.media-card button:not(.close-card):not(.slide-btn)::before,
 .redownload-btn::before,
 .re-download-btn::before,
 .action-btn::before,
@@ -758,46 +757,29 @@ input[type="text"]::placeholder {
   display: none !important;
 }
 
-#redownloadBtn:hover,
-.redownload-btn:hover,
-.re-download-btn:hover,
-.action-btn:hover,
-.modal-btn:hover,
-.modal-action-btn:hover {
-  background: rgba(var(--primary-rgb), 0.18) !important;
-  border-color: rgba(var(--primary-rgb), 0.38) !important;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 4px 14px rgba(var(--primary-rgb), 0.14) !important;
-}
-
-#redownloadBtn:active,
+.modal-content button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn):active,
+.info-modal button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn):active,
+#modalContent button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn):active,
+.media-card button:not(.close-card):not(.slide-btn):active,
 .redownload-btn:active,
 .re-download-btn:active,
 .action-btn:active,
 .modal-btn:active,
 .modal-action-btn:active {
-  background: rgba(var(--primary-rgb), 0.24) !important;
-  transform: scale(0.985) !important;
+  background: rgba(var(--primary-rgb), 0.26) !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 2px 6px rgba(var(--primary-rgb), 0.12) !important;
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 2px 8px rgba(var(--primary-rgb), 0.10) !important;
   transition-duration: 0.08s !important;
 }
 
-[data-theme="dark"] #redownloadBtn,
+[data-theme="dark"] .modal-content button:not(.modal-close):not(.close-modal):not(.info-close):not(.slide-btn),
 [data-theme="dark"] .redownload-btn,
-[data-theme="dark"] .re-download-btn,
 [data-theme="dark"] .action-btn,
-[data-theme="dark"] .modal-btn,
-[data-theme="dark"] .confirm-actions .ok-btn,
-[data-theme="dark"] .batch-modal-actions .primary-btn {
-  background: rgba(var(--primary-rgb), 0.18) !important;
-  border-color: rgba(var(--primary-rgb), 0.35) !important;
+[data-theme="dark"] .modal-btn {
+  background: rgba(var(--primary-rgb), 0.22) !important;
+  border-color: rgba(var(--primary-rgb), 0.38) !important;
   color: var(--primary) !important;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 2px 8px rgba(0, 0, 0, 0.25) !important;
 }
 
 .modal-actions button:first-child:not(:only-child),
@@ -1229,28 +1211,23 @@ body.anim-off .nav-sliding-pill {
 }
 
 .astrostar-music-output-badge {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  max-width: 36px !important;
-  border-radius: 50% !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #d8d8e2 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  transition: all 0.2s ease !important;
-  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8d8e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
 .astrostar-music-output-badge.playing {
-  background: rgba(30, 215, 96, 0.18) !important;
-  border-color: rgba(30, 215, 96, 0.4) !important;
-  color: #1ed760 !important;
+  background: rgba(30, 215, 96, 0.15);
+  border-color: rgba(30, 215, 96, 0.35);
+  color: #1ed760;
 }
 
 .astrostar-music-progress-section {
@@ -1334,71 +1311,59 @@ body.anim-off .nav-sliding-pill {
 }
 
 .astrostar-music-ctrl-btn {
-  background: transparent !important;
-  border: none !important;
-  color: #9496a3 !important;
-  padding: 0 !important;
+  background: transparent;
+  border: none;
+  color: #9496a3;
+  padding: 8px;
   cursor: pointer;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 50% !important;
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
-  flex-shrink: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-  transition: all 0.15s ease !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+  width: 40px;
+  height: 40px;
 }
 
 .astrostar-music-ctrl-btn:hover {
-  color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff;
 }
 
 .astrostar-music-ctrl-btn:active {
-  transform: scale(0.92) !important;
+  transform: scale(0.9);
 }
 
 .astrostar-music-ctrl-btn.active {
-  color: #1ed760 !important;
+  color: #1ed760;
 }
 
 .astrostar-music-play-btn {
-  width: 52px !important;
-  height: 52px !important;
-  min-width: 52px !important;
-  max-width: 52px !important;
-  border-radius: 50% !important;
-  background: #ffffff !important;
-  color: #0b0c0e !important;
-  border: none !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0b0c0e;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 0 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
-  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  flex-shrink: 0 !important;
-  outline: none !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .astrostar-music-play-btn:hover {
-  transform: scale(1.05) !important;
-  background: #f5f5f7 !important;
+  transform: scale(1.06);
+  background: #f5f5f7;
 }
 
 .astrostar-music-play-btn:active {
-  transform: scale(0.94) !important;
+  transform: scale(0.94);
 }
 
 .astrostar-music-play-btn svg {
-  width: 24px !important;
-  height: 24px !important;
-  fill: currentColor !important;
+  width: 24px;
+  height: 24px;
 }
 
 .astrostar-music-status-footer {
