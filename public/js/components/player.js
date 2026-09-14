@@ -234,6 +234,31 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   if (isShuffled) shuffleBtn.classList.add("active");
   if (loopMode) loopBtn.classList.add("active");
 
+  const resolveAudioUrl = (inputUrl) => {
+    if (!inputUrl) return "";
+    let s = String(inputUrl).trim();
+    if (window.Capacitor?.convertFileSrc && (s.startsWith("/") || s.startsWith("file://"))) {
+      return window.Capacitor.convertFileSrc(s);
+    }
+    if (s.startsWith("_capacitor_file_")) {
+      return "/" + s;
+    }
+    if (s.startsWith("http://") && !s.includes("localhost") && !s.includes("127.0.0.1")) {
+      return s.replace("http://", "https://");
+    }
+    return s;
+  };
+
+  // Setup HTML5 Audio element
+  const htmlAudio = document.createElement("audio");
+  htmlAudio.className = "astrostar-audio-element";
+  htmlAudio.style.display = "none";
+  htmlAudio.preload = "auto";
+  htmlAudio.crossOrigin = "anonymous";
+  htmlAudio.loop = loopMode;
+  htmlAudio.src = resolveAudioUrl(rawUrl);
+  container.appendChild(htmlAudio);
+
   const updateUIState = (playing, durSec, posSec) => {
     isPlaying = playing;
     if (durSec && durSec > 0) durationSec = durSec;
@@ -273,7 +298,6 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     } else if (mainNextBtn && !mainNextBtn.disabled && mainNextBtn.offsetParent !== null) {
       mainNextBtn.click();
     } else {
-      // If single item or at end, seek to start
       handleSeek(0);
     }
   };
@@ -294,11 +318,13 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     }
   };
 
-  // Hook global bridge callbacks for Android native service
+  // Hook global bridge callbacks
   window.astroStarMediaNextTrack = triggerNext;
   window.astroStarMediaPrevTrack = triggerPrev;
+  window.moriMediaNextTrack = triggerNext;
+  window.moriMediaPrevTrack = triggerPrev;
 
-  // Web Media Session API setup for mobile lock screen & control center
+  // Web Media Session API setup
   const syncMediaSession = () => {
     setMediaSessionMetadata({
       title,
@@ -319,182 +345,144 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
     });
   };
 
-  // Setup HTML5 Audio element for Web / Chrome / PWA / fallback
-  let htmlAudio = null;
+  htmlAudio.addEventListener("loadedmetadata", () => {
+    durationSec = htmlAudio.duration || 0;
+    updateUIState(!htmlAudio.paused, durationSec, htmlAudio.currentTime);
+    syncMediaSession();
+    updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
+  });
 
-  const initHtmlAudio = () => {
-    if (htmlAudio) return htmlAudio;
-    htmlAudio = new Audio();
-    htmlAudio.preload = "auto";
-    htmlAudio.crossOrigin = "anonymous";
-    htmlAudio.loop = loopMode;
-
-    let srcUrl = rawUrl;
-    if (window.Capacitor?.convertFileSrc && (srcUrl.startsWith("/") || srcUrl.startsWith("file://"))) {
-      srcUrl = window.Capacitor.convertFileSrc(srcUrl);
+  htmlAudio.addEventListener("timeupdate", () => {
+    if (!isDragging) {
+      currentSec = htmlAudio.currentTime;
+      updateUIState(!htmlAudio.paused, htmlAudio.duration || durationSec, currentSec);
+      updateMediaSessionPositionState(durationSec, currentSec);
     }
-    if (srcUrl.startsWith("http://") && !srcUrl.includes("localhost")) {
-      srcUrl = srcUrl.replace("http://", "https://");
+  });
+
+  htmlAudio.addEventListener("play", () => {
+    updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "playing";
     }
-    htmlAudio.src = srcUrl;
+  });
 
-    htmlAudio.addEventListener("loadedmetadata", () => {
-      durationSec = htmlAudio.duration || 0;
-      updateUIState(isPlaying, durationSec, htmlAudio.currentTime);
-      syncMediaSession();
-      updateMediaSessionPositionState(durationSec, htmlAudio.currentTime);
-    });
+  htmlAudio.addEventListener("pause", () => {
+    updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "paused";
+    }
+  });
 
-    htmlAudio.addEventListener("timeupdate", () => {
-      if (!isDragging) {
-        currentSec = htmlAudio.currentTime;
-        updateUIState(isPlaying, htmlAudio.duration || durationSec, currentSec);
-        updateMediaSessionPositionState(durationSec, currentSec);
+  htmlAudio.addEventListener("ended", () => {
+    if (loopMode) {
+      htmlAudio.currentTime = 0;
+      htmlAudio.play().catch(() => {});
+    } else {
+      triggerNext();
+    }
+  });
+
+  htmlAudio.addEventListener("error", (e) => {
+    console.warn("Audio error, attempting proxy streaming...", e);
+    if (rawUrl && rawUrl.startsWith("http") && !htmlAudio._proxyTried) {
+      htmlAudio._proxyTried = true;
+      htmlAudio.src = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
+      htmlAudio.load();
+      if (isPlaying) {
+        htmlAudio.play().catch(() => {});
       }
-    });
-
-    htmlAudio.addEventListener("play", () => {
-      updateUIState(true, durationSec, htmlAudio.currentTime);
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "playing";
-      }
-    });
-
-    htmlAudio.addEventListener("pause", () => {
-      updateUIState(false, durationSec, htmlAudio.currentTime);
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
-    });
-
-    htmlAudio.addEventListener("ended", () => {
-      if (!loopMode) {
-        triggerNext();
-      }
-    });
-
-    htmlAudio.addEventListener("error", (e) => {
-      console.warn("Audio error, attempting proxy streaming...", e);
-      if (rawUrl && rawUrl.startsWith("http") && !htmlAudio._proxyTried) {
-        htmlAudio._proxyTried = true;
-        htmlAudio.src = `/api/proxy?url=${encodeURIComponent(rawUrl)}`;
-        htmlAudio.load();
-        if (isPlaying) {
-          htmlAudio.play().catch(() => {});
-        }
-      }
-    });
-
-    return htmlAudio;
-  };
+    }
+  });
 
   // Play & Pause Handlers
   const handlePlay = () => {
-    if (canUseNativeService) {
+    if (!htmlAudio.src) {
+      htmlAudio.src = resolveAudioUrl(rawUrl);
+    }
+    const playPromise = htmlAudio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          updateUIState(true, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+          syncMediaSession();
+        })
+        .catch((err) => {
+          console.warn("Audio play failed, retrying on user click:", err);
+          updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+        });
+    }
+
+    if (isNativePlatform && window.AstroStarMainBridge?.loadMedia) {
       try {
+        window.AstroStarMainBridge.loadMedia(rawUrl, title, artist, artwork);
         window.AstroStarMainBridge.playMedia();
-        updateUIState(true, durationSec, currentSec);
       } catch (err) {
-        console.warn("Native playMedia failed, falling back:", err);
-        canUseNativeService = false;
-        const a = initHtmlAudio();
-        a.play().catch(() => {});
+        console.warn("Native bridge playMedia error:", err);
       }
-    } else {
-      const a = initHtmlAudio();
-      a.play().then(() => {
-        updateUIState(true, a.duration || durationSec, a.currentTime);
-        syncMediaSession();
-      }).catch((err) => {
-        console.warn("HTML5 audio play error:", err);
-      });
     }
   };
 
   const handlePause = () => {
-    if (canUseNativeService) {
+    htmlAudio.pause();
+    updateUIState(false, htmlAudio.duration || durationSec, htmlAudio.currentTime);
+
+    if (isNativePlatform && window.AstroStarMainBridge?.pauseMedia) {
       try {
         window.AstroStarMainBridge.pauseMedia();
-        updateUIState(false, durationSec, currentSec);
       } catch (err) {
-        console.warn("Native pauseMedia failed:", err);
+        console.warn("Native bridge pauseMedia error:", err);
       }
-    } else if (htmlAudio) {
-      htmlAudio.pause();
-      updateUIState(false, durationSec, htmlAudio.currentTime);
     }
   };
 
   const handleSeek = (sec) => {
     const targetSec = Math.max(0, Math.min(sec, durationSec || sec));
     currentSec = targetSec;
-    if (canUseNativeService) {
+    try {
+      htmlAudio.currentTime = targetSec;
+    } catch (_) {}
+    updateUIState(!htmlAudio.paused, durationSec, targetSec);
+    updateMediaSessionPositionState(durationSec, targetSec);
+
+    if (isNativePlatform && window.AstroStarMainBridge?.seekMedia) {
       try {
         window.AstroStarMainBridge.seekMedia(Math.round(targetSec * 1000));
       } catch (_) {}
-    } else if (htmlAudio) {
-      htmlAudio.currentTime = targetSec;
     }
-    updateUIState(isPlaying, durationSec, targetSec);
-    updateMediaSessionPositionState(durationSec, targetSec);
   };
 
   // Connect native bridge callbacks
-  if (canUseNativeService) {
+  if (isNativePlatform && window.AstroStarMainBridge?.loadMedia) {
     try {
       window.AstroStarMainBridge.loadMedia(rawUrl, title, artist, artwork);
-      isPlaying = true;
-      updateUIState(true, 0, 0);
     } catch (e) {
-      console.warn("Failed to loadMedia via Native Bridge:", e);
-      canUseNativeService = false;
-      initHtmlAudio();
+      console.warn("Failed to notify native bridge:", e);
     }
 
-    const syncNativeProgress = (posMs, durMs) => {
-      durationSec = durMs / 1000;
-      currentSec = posMs / 1000;
-      updateUIState(isPlaying, durationSec, currentSec);
-      updateMediaSessionPositionState(durationSec, currentSec);
-    };
-
-    const syncNativeState = (state) => {
+    window.astroStarMediaState = (state) => {
       if (!state) return;
-      if (state.isError) {
-        console.warn("Native media playback error, falling back to HTML5 audio...");
-        canUseNativeService = false;
-        const a = initHtmlAudio();
-        if (isPlaying) {
-          a.play().catch(e => console.warn("HTML5 audio fallback error:", e));
-        }
-        return;
+      if (state.isPlaying && htmlAudio.paused) {
+        htmlAudio.play().catch(() => {});
+      } else if (!state.isPlaying && !htmlAudio.paused) {
+        htmlAudio.pause();
       }
-      isPlaying = !!state.isPlaying;
-      if (state.duration) durationSec = state.duration / 1000;
-      updateUIState(isPlaying, durationSec, currentSec);
     };
+    window.moriMediaState = window.astroStarMediaState;
+  }
 
-    window.astroStarMediaProgress = syncNativeProgress;
-    window.moriMediaProgress = syncNativeProgress;
-    window.astroStarMediaState = syncNativeState;
-    window.moriMediaState = syncNativeState;
-    window.astroStarMediaNextTrack = triggerNext;
-    window.moriMediaNextTrack = triggerNext;
-    window.astroStarMediaPrevTrack = triggerPrev;
-    window.moriMediaPrevTrack = triggerPrev;
-  } else {
-    // Web / Chrome / PWA mode
-    syncMediaSession();
-    const autoPlaySetting = localStorage.getItem("astrostar_autoplay") !== "false";
-    if (index === 0 && autoPlaySetting) {
-      setTimeout(() => handlePlay(), 300);
-    }
+  syncMediaSession();
+  const autoPlaySetting = localStorage.getItem("astrostar_autoplay") !== "false";
+  if (index === 0 && autoPlaySetting) {
+    setTimeout(() => {
+      handlePlay();
+    }, 300);
   }
 
   // Event Listeners for UI buttons
   playBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (isPlaying) {
+    if (!htmlAudio.paused) {
       handlePause();
     } else {
       handlePlay();
@@ -588,18 +576,20 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
   // Cleanup on element destruction
   container._cleanup = () => {
-    if (canUseNativeService) {
+    if (isNativePlatform && window.AstroStarMainBridge?.stopMedia) {
       try {
         window.AstroStarMainBridge.stopMedia();
       } catch (_) {}
       window.astroStarMediaProgress = null;
       window.astroStarMediaState = null;
+      window.moriMediaProgress = null;
+      window.moriMediaState = null;
     }
     if (htmlAudio) {
       try {
         htmlAudio.pause();
-        htmlAudio.src = "";
-        htmlAudio = null;
+        htmlAudio.removeAttribute("src");
+        htmlAudio.load();
       } catch (_) {}
     }
     clearMediaSession();

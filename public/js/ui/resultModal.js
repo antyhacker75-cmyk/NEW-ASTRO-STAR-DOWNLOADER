@@ -179,6 +179,9 @@ export async function showModal(item, onRedownload) {
               rawPath: file.path,
               rawUri: file.uri,
               type: mediaType,
+              title: item.title || item.filename || file.name || "Media File",
+              author: item.author || item.artist || "AstroStar Downloader",
+              artist: item.artist || item.author || "AstroStar Downloader",
               thumbnail: file.thumbnail || item.thumbnail,
               isLocal: true,
             });
@@ -196,6 +199,9 @@ export async function showModal(item, onRedownload) {
           rawPath: item.localUri,
           rawUri: item.localUri,
           type: mediaType,
+          title: item.title || item.filename || "Media File",
+          author: item.author || item.artist || "AstroStar Downloader",
+          artist: item.artist || item.author || "AstroStar Downloader",
           thumbnail: item.localThumbnail || item.thumbnail,
           isLocal: true,
         });
@@ -211,9 +217,13 @@ export async function showModal(item, onRedownload) {
                   ? "MP3"
                   : "IMAGE");
             displayItems.push({
-              url: localUrl,
+              url: toCapacitorUrl(localUrl),
               remoteUrl: dl.url || dl.src,
+              rawPath: dl.localUrl || dl.localSrc,
               type: mediaType,
+              title: dl.title || item.title || item.filename || "Media File",
+              author: dl.author || dl.artist || item.author || item.artist || "AstroStar Downloader",
+              artist: dl.artist || dl.author || item.artist || item.author || "AstroStar Downloader",
               thumbnail: dl.thumbnail || item.thumbnail,
               isLocal: true,
             });
@@ -233,6 +243,8 @@ export async function showModal(item, onRedownload) {
           displayItems.push({
             url: dl.url || dl.src,
             type: "IMAGE",
+            title: dl.title || item.title || "",
+            author: dl.author || dl.artist || item.author || "AstroStar Downloader",
             thumbnail: dl.thumbnail || item.thumbnail,
             isLocal: false,
           });
@@ -245,6 +257,8 @@ export async function showModal(item, onRedownload) {
             item.url ||
             "",
           type: "IMAGE",
+          title: item.title || "",
+          author: item.author || item.artist || "AstroStar Downloader",
           thumbnail: item.thumbnail,
           isLocal: false,
         });
