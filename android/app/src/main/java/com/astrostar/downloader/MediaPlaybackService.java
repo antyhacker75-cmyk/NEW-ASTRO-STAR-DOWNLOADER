@@ -302,6 +302,15 @@ public class MediaPlaybackService extends Service {
         mediaSession.setActive(true);
     }
 
+    private PendingIntent buildServicePendingIntent(String action, int requestCode) {
+        Intent intent = new Intent(this, MediaPlaybackService.class).setAction(action);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return PendingIntent.getForegroundService(this, requestCode, intent, pendingFlags());
+        } else {
+            return PendingIntent.getService(this, requestCode, intent, pendingFlags());
+        }
+    }
+
     private void updateMetadata() {
         if (mediaSession == null) return;
 
@@ -309,7 +318,10 @@ public class MediaPlaybackService extends Service {
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "AstroStar Downloader")
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "AstroStar Downloader")
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, currentArtist)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, currentTitle)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentArtist)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, "AstroStar Downloader")
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs);
 
         if (currentArtwork != null) {
@@ -482,24 +494,23 @@ public class MediaPlaybackService extends Service {
                     playUrl = "/" + playUrl;
                 }
             }
+            if (playUrl.startsWith("/") || playUrl.startsWith("file://")) {
+                try {
+                    playUrl = Uri.decode(playUrl);
+                } catch (Exception ignored) {}
+            }
 
             if (playUrl.startsWith("content://")) {
                 mediaPlayer.setDataSource(this, Uri.parse(playUrl));
-            } else if (playUrl.startsWith("file://")) {
-                Uri parsedUri = Uri.parse(playUrl);
-                String filePath = parsedUri.getPath();
-                File f = new File(filePath != null ? filePath : playUrl.substring(7));
+            } else if (playUrl.startsWith("file://") || playUrl.startsWith("/")) {
+                String rawFilePath = playUrl.startsWith("file://") ? playUrl.substring(7) : playUrl;
+                File f = new File(rawFilePath);
                 if (f.exists() && f.canRead()) {
-                    mediaPlayer.setDataSource(f.getAbsolutePath());
+                    FileInputStream fis = new FileInputStream(f);
+                    mediaPlayer.setDataSource(fis.getFD());
+                    fis.close();
                 } else {
-                    mediaPlayer.setDataSource(this, parsedUri);
-                }
-            } else if (playUrl.startsWith("/")) {
-                File f = new File(playUrl);
-                if (f.exists() && f.canRead()) {
-                    mediaPlayer.setDataSource(f.getAbsolutePath());
-                } else {
-                    mediaPlayer.setDataSource(playUrl);
+                    mediaPlayer.setDataSource(this, Uri.parse(playUrl.startsWith("file://") ? playUrl : "file://" + playUrl));
                 }
             } else if (playUrl.startsWith("http://") || playUrl.startsWith("https://")) {
                 java.util.Map<String, String> headers = new java.util.HashMap<>();
@@ -644,26 +655,17 @@ public class MediaPlaybackService extends Service {
     private Notification buildMediaNotification() {
         boolean playing = isPlaying;
 
-        PendingIntent playPausePi = PendingIntent.getService(
-                this, 101,
-                new Intent(this, MediaPlaybackService.class)
-                        .setAction(playing ? ACTION_PAUSE : ACTION_PLAY),
-                pendingFlags());
+        PendingIntent playPausePi = buildServicePendingIntent(
+                playing ? ACTION_PAUSE : ACTION_PLAY, 101);
 
-        PendingIntent stopPi = PendingIntent.getService(
-                this, 102,
-                new Intent(this, MediaPlaybackService.class).setAction(ACTION_STOP),
-                pendingFlags());
+        PendingIntent stopPi = buildServicePendingIntent(
+                ACTION_STOP, 102);
 
-        PendingIntent nextPi = PendingIntent.getService(
-                this, 103,
-                new Intent(this, MediaPlaybackService.class).setAction(ACTION_NEXT),
-                pendingFlags());
+        PendingIntent nextPi = buildServicePendingIntent(
+                ACTION_NEXT, 103);
 
-        PendingIntent prevPi = PendingIntent.getService(
-                this, 104,
-                new Intent(this, MediaPlaybackService.class).setAction(ACTION_PREV),
-                pendingFlags());
+        PendingIntent prevPi = buildServicePendingIntent(
+                ACTION_PREV, 104);
 
         PendingIntent contentPi = PendingIntent.getActivity(
                 this, 0,
