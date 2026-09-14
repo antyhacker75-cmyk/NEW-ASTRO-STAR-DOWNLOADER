@@ -1125,7 +1125,7 @@ body.anim-off .nav-sliding-pill {
 .astrostar-music-header {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
 }
 
@@ -1211,23 +1211,40 @@ body.anim-off .nav-sliding-pill {
 }
 
 .astrostar-music-output-badge {
-  width: 38px;
-  height: 38px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: #d8d8e2;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: #c0c2ce;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
+.astrostar-music-output-badge:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.astrostar-music-output-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
 .astrostar-music-output-badge.playing {
-  background: rgba(30, 215, 96, 0.15);
-  border-color: rgba(30, 215, 96, 0.35);
+  background: rgba(30, 215, 96, 0.2);
+  border-color: rgba(30, 215, 96, 0.5);
   color: #1ed760;
+  box-shadow: 0 0 8px rgba(30, 215, 96, 0.35);
 }
 
 .astrostar-music-progress-section {
@@ -1314,15 +1331,20 @@ body.anim-off .nav-sliding-pill {
   background: transparent;
   border: none;
   color: #9496a3;
-  padding: 8px;
+  padding: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.15s ease;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
+}
+
+.astrostar-music-ctrl-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .astrostar-music-ctrl-btn:hover {
@@ -1338,8 +1360,8 @@ body.anim-off .nav-sliding-pill {
 }
 
 .astrostar-music-play-btn {
-  width: 54px;
-  height: 54px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #ffffff;
   color: #0b0c0e;
@@ -1348,7 +1370,7 @@ body.anim-off .nav-sliding-pill {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1362,8 +1384,8 @@ body.anim-off .nav-sliding-pill {
 }
 
 .astrostar-music-play-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 
 .astrostar-music-status-footer {
