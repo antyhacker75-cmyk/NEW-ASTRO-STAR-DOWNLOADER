@@ -2285,6 +2285,56 @@ body.dark-theme .action-item:active,
 }
 .settings-item .info-val { font-size: 0.8rem !important; opacity: 0.8; }
 
+.text-size-slider-wrapper {
+  padding: 12px 18px 16px;
+  background: rgba(var(--primary-rgb), 0.06);
+  border-bottom: 1px solid var(--border-color, rgba(var(--primary-rgb), 0.12));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+.text-size-slider-wrapper.hidden {
+  display: none !important;
+}
+.text-size-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.text-size-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.text-size-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+  background: rgba(var(--primary-rgb), 0.12);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.text-size-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.text-size-bound {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  min-width: 32px;
+  text-align: center;
+}
+[dir="rtl"] .text-size-slider-row {
+  direction: rtl;
+}
+
 /* ============================================================
    INFO MODAL
    ============================================================ */

@@ -14,6 +14,7 @@ import {
   updateGreeting,
   updateStorageInfo,
   switchToSingleMode,
+  APP_VERSION,
 } from "./core.js";
 
 // History Edit Handlers
@@ -189,8 +190,8 @@ window.addEventListener("astrostar_file_saved", async (e) => {
               ...item,
               localFiles,
               localThumbnail: localThumbnail || item.localThumbnail,
-              versionCode: 16,
-              versionName: "4.3.0",
+              versionCode: 17,
+              versionName: APP_VERSION,
             };
           }
           return item;

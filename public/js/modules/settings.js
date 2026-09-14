@@ -363,12 +363,59 @@ applyAnimSpeed();
 
 export function applyTextSize() {
   const size = localStorage.getItem("astrostar_text_size") || "medium";
-  const fontSizeMap = { small: "14px", medium: "16px", large: "18px" };
-  document.documentElement.style.fontSize = fontSizeMap[size] || "16px";
-  document.body.classList.remove("text-small", "text-medium", "text-large");
+  const customRow = document.getElementById("textSizeCustomRow");
+  const customSlider = document.getElementById("textSizeSlider");
+  const customValEl = document.getElementById("textSizeCustomValue");
+
+  let fontSize = "16px";
+  if (size === "small") {
+    fontSize = "14px";
+    if (customRow) customRow.classList.add("hidden");
+  } else if (size === "medium") {
+    fontSize = "16px";
+    if (customRow) customRow.classList.add("hidden");
+  } else if (size === "large") {
+    fontSize = "18px";
+    if (customRow) customRow.classList.add("hidden");
+  } else if (size === "custom") {
+    const customPx = parseInt(localStorage.getItem("astrostar_custom_text_size") || "16", 10);
+    const clamped = Math.min(30, Math.max(10, customPx || 16));
+    fontSize = `${clamped}px`;
+    if (customRow) customRow.classList.remove("hidden");
+    if (customSlider) customSlider.value = clamped;
+    if (customValEl) customValEl.textContent = `${clamped}px`;
+  }
+
+  document.documentElement.style.fontSize = fontSize;
+  document.body.classList.remove("text-small", "text-medium", "text-large", "text-custom");
   document.body.classList.add(`text-${size}`);
 }
 applyTextSize();
+
+const textSizeSlider = document.getElementById("textSizeSlider");
+const textSizeCustomValue = document.getElementById("textSizeCustomValue");
+if (textSizeSlider) {
+  const updateCustomTextSize = (val, showNotification = false) => {
+    const num = parseInt(val, 10);
+    const clamped = Math.min(30, Math.max(10, num || 16));
+    localStorage.setItem("astrostar_custom_text_size", clamped);
+    syncSettingToNative("astrostar_custom_text_size", String(clamped));
+    if (textSizeCustomValue) textSizeCustomValue.textContent = `${clamped}px`;
+    document.documentElement.style.fontSize = `${clamped}px`;
+    if (showNotification) {
+      const lang = translations[currentLang] || translations.en;
+      showToast(`${lang["toast-text-size"] || "Text size: "}${clamped}px`);
+    }
+  };
+
+  textSizeSlider.addEventListener("input", (e) => {
+    updateCustomTextSize(e.target.value, false);
+  });
+
+  textSizeSlider.addEventListener("change", (e) => {
+    updateCustomTextSize(e.target.value, true);
+  });
+}
 
 const compactModeToggle = document.getElementById("compactModeToggle");
 if (compactModeToggle) {
