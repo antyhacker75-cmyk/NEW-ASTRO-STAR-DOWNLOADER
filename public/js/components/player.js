@@ -104,22 +104,8 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   const rawUrl = dl.rawPath || dl.rawUri || dl.url || "";
   const platform = getPlatformInfo(dl, rawUrl);
 
-  const isRealAudioOnly =
-    (dl.type || "").toLowerCase().includes("audio") ||
-    (dl.type || "").toLowerCase().includes("mp3") ||
-    (dl.type || "").toLowerCase().includes("m4a") ||
-    rawUrl.toLowerCase().endsWith(".mp3") ||
-    rawUrl.toLowerCase().endsWith(".m4a") ||
-    rawUrl.toLowerCase().endsWith(".aac") ||
-    rawUrl.toLowerCase().endsWith(".wav") ||
-    rawUrl.toLowerCase().endsWith(".flac") ||
-    rawUrl.toLowerCase().endsWith(".opus") ||
-    rawUrl.toLowerCase().includes("/music/");
-
-  let canUseNativeService =
-    isNativePlatform &&
-    !!window.AstroStarMainBridge?.loadMedia &&
-    isRealAudioOnly;
+  const nativeBridge = window.AstroStarMainBridge || window.MoriMainBridge || null;
+  let canUseNativeService = !!(nativeBridge && typeof nativeBridge.loadMedia === "function");
 
   // Render UI layout (Title on top, App Name on bottom)
   container.innerHTML = `
@@ -395,10 +381,11 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
 
   // Play & Pause Handlers
   const handlePlay = () => {
-    if (canUseNativeService) {
+    if (canUseNativeService && nativeBridge) {
       try {
-        window.AstroStarMainBridge.playMedia();
+        nativeBridge.playMedia();
         updateUIState(true, durationSec, currentSec);
+        syncMediaSession();
       } catch (err) {
         canUseNativeService = false;
         htmlAudio.play().catch((e) => console.warn("HTML5 audio play error:", e));
@@ -414,9 +401,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   };
 
   const handlePause = () => {
-    if (canUseNativeService) {
+    if (canUseNativeService && nativeBridge) {
       try {
-        window.AstroStarMainBridge.pauseMedia();
+        nativeBridge.pauseMedia();
         updateUIState(false, durationSec, currentSec);
       } catch (err) {
         console.warn("Native pauseMedia failed:", err);
@@ -429,9 +416,9 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   const handleSeek = (sec) => {
     const targetSec = Math.max(0, Math.min(sec, durationSec || sec));
     currentSec = targetSec;
-    if (canUseNativeService) {
+    if (canUseNativeService && nativeBridge) {
       try {
-        window.AstroStarMainBridge.seekMedia(Math.round(targetSec * 1000));
+        nativeBridge.seekMedia(Math.round(targetSec * 1000));
       } catch (_) {}
     }
     htmlAudio.currentTime = targetSec;
@@ -440,11 +427,12 @@ export function createMusicPlayer(dl, index, resultThumbnail) {
   };
 
   // Connect native bridge callbacks
-  if (canUseNativeService) {
+  if (canUseNativeService && nativeBridge) {
     try {
-      window.AstroStarMainBridge.loadMedia(rawNativeUrl, title, artist, artwork);
+      nativeBridge.loadMedia(rawNativeUrl, title, artist, artwork);
       isPlaying = true;
       updateUIState(true, 0, 0);
+      syncMediaSession();
     } catch (e) {
       console.warn("Failed to loadMedia via Native Bridge:", e);
       canUseNativeService = false;

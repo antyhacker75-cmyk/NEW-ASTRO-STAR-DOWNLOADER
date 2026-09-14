@@ -99,15 +99,8 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
-        @JavascriptInterface
-        public void loadMedia(String url, String title, String artist, String artwork) {
+        private void startPlaybackService(Intent intent) {
             try {
-                Intent intent = new Intent(MainActivity.this, MediaPlaybackService.class);
-                intent.setAction(MediaPlaybackService.ACTION_LOAD);
-                intent.putExtra(MediaPlaybackService.EXTRA_URL, url);
-                intent.putExtra(MediaPlaybackService.EXTRA_TITLE, title);
-                intent.putExtra(MediaPlaybackService.EXTRA_ARTIST, artist);
-                intent.putExtra(MediaPlaybackService.EXTRA_ARTWORK, artwork);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForegroundService(intent);
                 } else {
@@ -119,11 +112,26 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void loadMedia(String url, String title, String artist, String artwork) {
+            try {
+                Intent intent = new Intent(MainActivity.this, MediaPlaybackService.class);
+                intent.setAction(MediaPlaybackService.ACTION_LOAD);
+                intent.putExtra(MediaPlaybackService.EXTRA_URL, url);
+                intent.putExtra(MediaPlaybackService.EXTRA_TITLE, title);
+                intent.putExtra(MediaPlaybackService.EXTRA_ARTIST, artist);
+                intent.putExtra(MediaPlaybackService.EXTRA_ARTWORK, artwork);
+                startPlaybackService(intent);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @JavascriptInterface
         public void playMedia() {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PLAY);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -132,7 +140,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PAUSE);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -141,7 +149,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_STOP);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -149,9 +157,9 @@ public class MainActivity extends BridgeActivity {
         public void seekMedia(int positionMs) {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
-                i.setAction(MediaPlaybackService.ACTION_PLAY);
+                i.setAction(MediaPlaybackService.ACTION_SEEK);
                 i.putExtra("seek", positionMs);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -160,7 +168,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_NEXT);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 
@@ -169,7 +177,7 @@ public class MainActivity extends BridgeActivity {
             try {
                 Intent i = new Intent(MainActivity.this, MediaPlaybackService.class);
                 i.setAction(MediaPlaybackService.ACTION_PREV);
-                startService(i);
+                startPlaybackService(i);
             } catch (Exception e) { e.printStackTrace(); }
         }
 

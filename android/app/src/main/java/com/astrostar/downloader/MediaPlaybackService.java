@@ -173,6 +173,7 @@ public class MediaPlaybackService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         try {
+            startForegroundMedia();
             if (intent == null) return START_NOT_STICKY;
             String action = intent.getAction();
             if (action == null) return START_NOT_STICKY;
@@ -500,6 +501,11 @@ public class MediaPlaybackService extends Service {
                 } else {
                     mediaPlayer.setDataSource(playUrl);
                 }
+            } else if (playUrl.startsWith("http://") || playUrl.startsWith("https://")) {
+                java.util.Map<String, String> headers = new java.util.HashMap<>();
+                headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+                headers.put("Referer", "https://www.google.com/");
+                mediaPlayer.setDataSource(this, Uri.parse(playUrl), headers);
             } else {
                 mediaPlayer.setDataSource(playUrl);
             }
