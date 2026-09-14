@@ -5,7 +5,7 @@
 <h1 align="center">Mori</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v4.3.0-brown?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v4.3.7-brown?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/downloads/coflyn/Mori/total?style=flat-square&color=blue" alt="Downloads">
   <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
   <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
@@ -276,8 +276,8 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-- **macOS Release Asset**: `Mori-v4.3.0-macOS-arm64.dmg` & `Mori-v4.3.0-macOS-arm64.app.tar.gz`
-- **Windows Release Asset**: `Mori-v4.3.0-Windows-x64-Setup.exe` & `Mori-v4.3.0-Windows-x64.msi`
+- **macOS Release Asset**: `Mori-v4.3.7-macOS-arm64.dmg` & `Mori-v4.3.7-macOS-arm64.app.tar.gz`
+- **Windows Release Asset**: `Mori-v4.3.7-Windows-x64-Setup.exe` & `Mori-v4.3.7-Windows-x64.msi`
 
 ### Running & Building for iOS
 
@@ -313,14 +313,14 @@ npx cap sync ios
 xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/Mori.xcarchive archive CODE_SIGNING_ALLOWED=NO
 
 # 3. Package compiled app bundle into a Payload folder and Zip to IPA
-mkdir -p Payload && cp -r build/Mori.xcarchive/Products/Applications/App.app Payload/ && zip -r "Mori v4.3.0.ipa" Payload && rm -rf Payload build
+mkdir -p Payload && cp -r build/Mori.xcarchive/Products/Applications/App.app Payload/ && zip -r "Mori v4.3.7.ipa" Payload && rm -rf Payload build
 ```
 
-This outputs `Mori v4.3.0.ipa` in your project root directory, ready to be sideloaded via AltStore, Sideloadly, Scarlet, or TrollStore.
+This outputs `Mori v4.3.7.ipa` in your project root directory, ready to be sideloaded via AltStore, Sideloadly, Scarlet, or TrollStore.
 
 ## iOS Sideloading Guide
 
-Since Mori is client-side only and not distributed on the Apple App Store, iOS users can install `Mori v4.3.0.ipa` using one of the following sideloading methods:
+Since Mori is client-side only and not distributed on the Apple App Store, iOS users can install `Mori v4.3.7.ipa` using one of the following sideloading methods:
 
 - **AltStore / Sideloadly**: Best for all iOS versions. Requires a PC/Mac for initial installation, and app signatures need to be refreshed every 7 days (free personal Apple ID).
 - **TrollStore**: Best for compatible iOS versions. Installs permanently, requires no computer after setup, and does not expire.
